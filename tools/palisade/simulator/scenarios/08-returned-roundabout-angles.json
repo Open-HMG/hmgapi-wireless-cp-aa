@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "id": "08-returned-roundabout-angles",
+  "title": "Returned roundabout angles -87 and -15 \u00b7 #7",
+  "description": "Keep HUD/cluster guidance visible for both returned noncanonical angles; retain countdown, promotion and cancellation.",
+  "provenance": "Simplified reconstruction of returned type/side/junction/angle metadata. Generic labels and scripted distances; physical symbol acceptance remains pending.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "maneuver",
+      "component": 6,
+      "index": 8,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90
+    },
+    {
+      "at": 100,
+      "kind": "route",
+      "component": 6,
+      "state": 1,
+      "selected": [
+        8
+      ],
+      "distanceText": "500",
+      "distanceUnit": 4,
+      "destination": "Synthetic destination",
+      "remainingMetres": 1609,
+      "expect": {
+        "hudCount": 1,
+        "clusterIcon": 13
+      }
+    },
+    {
+      "at": 200,
+      "kind": "maneuver",
+      "component": 6,
+      "index": 9,
+      "type": 29,
+      "side": 0,
+      "junction": 1,
+      "exit": -87
+    },
+    {
+      "at": 300,
+      "kind": "route",
+      "component": 6,
+      "selected": [
+        9
+      ],
+      "distanceText": "300",
+      "distanceUnit": 4,
+      "expect": {
+        "hudCount": 1,
+        "hudPrimaryIcon": 105,
+        "clusterIcon": 32,
+        "hudPrimary": "300 ft",
+        "destination": "Synthetic destination",
+        "routeActive": true
+      }
+    },
+    {
+      "at": 2500,
+      "kind": "route",
+      "component": 6,
+      "distanceText": "100",
+      "expect": {
+        "hudPrimaryIcon": 105,
+        "clusterIcon": 32,
+        "hudPrimary": "100 ft"
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "maneuver",
+      "component": 6,
+      "index": 9,
+      "distanceMetres": 30,
+      "expect": {
+        "hudPrimaryIcon": 105,
+        "hudPrimary": "100 ft"
+      }
+    },
+    {
+      "at": 6500,
+      "kind": "maneuver",
+      "component": 6,
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90
+    },
+    {
+      "at": 6600,
+      "kind": "route",
+      "component": 6,
+      "selected": [
+        10
+      ],
+      "distanceText": "200",
+      "expect": {
+        "hudPrimaryIcon": 67,
+        "clusterIcon": 13,
+        "hudPrimary": "200 ft"
+      }
+    },
+    {
+      "at": 8500,
+      "kind": "stop",
+      "expect": {
+        "hudCount": 0,
+        "routeActive": false
+      }
+    },
+    {
+      "at": 10000,
+      "kind": "maneuver",
+      "component": 5,
+      "index": 4,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90
+    },
+    {
+      "at": 10100,
+      "kind": "route",
+      "component": 5,
+      "state": 1,
+      "selected": [
+        4
+      ],
+      "distanceText": "500",
+      "distanceUnit": 4,
+      "destination": "Synthetic destination",
+      "remainingMetres": 1609,
+      "expect": {
+        "hudCount": 1,
+        "clusterIcon": 13
+      }
+    },
+    {
+      "at": 10200,
+      "kind": "maneuver",
+      "component": 5,
+      "index": 5,
+      "type": 29,
+      "side": 0,
+      "junction": 1,
+      "exit": -15
+    },
+    {
+      "at": 10300,
+      "kind": "route",
+      "component": 5,
+      "selected": [
+        5
+      ],
+      "distanceText": "300",
+      "distanceUnit": 4,
+      "expect": {
+        "hudCount": 1,
+        "hudPrimaryIcon": 97,
+        "clusterIcon": 32,
+        "hudPrimary": "300 ft",
+        "destination": "Synthetic destination",
+        "routeActive": true
+      }
+    },
+    {
+      "at": 12500,
+      "kind": "route",
+      "component": 5,
+      "distanceText": "100",
+      "expect": {
+        "hudPrimaryIcon": 97,
+        "clusterIcon": 32,
+        "hudPrimary": "100 ft"
+      }
+    },
+    {
+      "at": 14500,
+      "kind": "maneuver",
+      "component": 5,
+      "index": 5,
+      "distanceMetres": 30,
+      "expect": {
+        "hudPrimaryIcon": 97,
+        "hudPrimary": "100 ft"
+      }
+    },
+    {
+      "at": 16500,
+      "kind": "maneuver",
+      "component": 5,
+      "index": 6,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90
+    },
+    {
+      "at": 16600,
+      "kind": "route",
+      "component": 5,
+      "selected": [
+        6
+      ],
+      "distanceText": "200",
+      "expect": {
+        "hudPrimaryIcon": 67,
+        "clusterIcon": 13,
+        "hudPrimary": "200 ft"
+      }
+    },
+    {
+      "at": 18500,
+      "kind": "stop",
+      "expect": {
+        "hudCount": 0,
+        "routeActive": false
+      }
+    }
+  ]
+}

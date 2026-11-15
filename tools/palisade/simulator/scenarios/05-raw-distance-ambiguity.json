@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "id": "05-raw-distance-ambiguity",
+  "title": "Distance ambiguity \u00b7 failing control",
+  "description": "Intentionally failing fixture: raw-only following distance is vehicle-relative, while independently specified turn separation is 250 ft. This catches an unsupported semantic assumption.",
+  "units": "mi",
+  "provenance": "Synthetic fixture. Route geometry and expected output are authored independently of the bridge.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "label": "Stock heading",
+      "heading": 45
+    },
+    {
+      "at": 200,
+      "kind": "maneuver",
+      "label": "Prefetch Cedar Avenue",
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Cedar Avenue",
+      "distanceMetres": 1609
+    },
+    {
+      "at": 400,
+      "kind": "maneuver",
+      "label": "Prefetch Oak Street",
+      "index": 20,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "road": "Oak Street",
+      "distanceMetres": 1685
+    },
+    {
+      "at": 1000,
+      "kind": "route",
+      "label": "Vehicle-relative raw distance has no between-turn measurement",
+      "state": 1,
+      "selected": [
+        10,
+        20
+      ],
+      "distanceMetres": 1609,
+      "distanceText": "1.0",
+      "distanceUnit": 1,
+      "truth": "Independent route geometry: Cedar \u2192 Oak is 250 ft. The 1685 m field describes vehicle \u2192 Oak in this fixture. No corrected field is supplied.",
+      "expect": {
+        "hudPrimary": "1.0 mi",
+        "hudSecondary": "250 ft"
+      }
+    },
+    {
+      "at": 4000,
+      "kind": "route",
+      "label": "Stale raw secondary remains while primary counts down",
+      "distanceMetres": 804,
+      "distanceText": "0.5",
+      "expect": {
+        "hudSecondary": "250 ft"
+      }
+    },
+    {
+      "at": 7000,
+      "kind": "stop",
+      "label": "Cancel",
+      "expect": {
+        "hudCount": 0
+      }
+    }
+  ]
+}

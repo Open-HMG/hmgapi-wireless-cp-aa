@@ -1,0 +1,9 @@
+# Correct LaneGuidanceInformation dispatch in process memory only.
+# Full source MD5 is gated by Wireless before requesting this recipe.
+id iap2-lanes-fc7cb675
+file /system/lib/libiap2session.so
+verify 0x1465c 480 9976009f4541200bb06ea423dc86bedf -
+segment 0x40000 03b40b4878440178022909d14178522906d14188002903d104210170bff35b8f03bc2de9f04705b402487844019001bd0000000000000000
+rel32 0x30 0x8 0x31c80
+rel32 0x34 0x2e 0x14661
+branch 0x1465c 0

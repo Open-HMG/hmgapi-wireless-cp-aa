@@ -95,17 +95,19 @@ public final class CpTurnsTest {
                 12, ENUM, i(2), 13, U16, i(0)));
         expect("India Apple right turn reaches cluster and HUD",
                 "road [Test Road]", "tbt 67 0 0.0 100.0 0 0 0 0 0",
-                "hud f201430000" + utf16("Test Road"), "2c 0 0 100 0 0 0 0 0 0");
+                "hud f201430000" + utf16("Test Road"), "2c 0 0 100 0 0 0 0 0 0", "lanes f1");
         t.maneuver(msg(0, U16, i(1), 1, U16, i(0), 3, ENUM, i(11)));
         t.routeGuidance(msg(0, U16, i(1)));
         expect("Google departure clears prior HUD turn and sends non-directional NO_INFO",
-                "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2",
-                "road [Test Road]", "tbt 1 0 0.0 100.0 0 0 0 0 0", "2c 0 0 100 0 0 0 0 0 0");
+                "road [Test Road]", "tbt 1 0 0.0 100.0 0 0 0 0 0",
+                "2c 0 0 0 0 0 0 0 0 0", "hud f2", "hud f2",
+                "road [Test Road]", "tbt 1 0 0.0 100.0 0 0 0 0 0");
         t.maneuver(msg(0, U16, i(1), 1, U16, i(0), 3, ENUM, i(2)));
         t.routeGuidance(msg(0, U16, i(1)));
         expect("Google right without angle reaches cluster and HUD after departure",
                 "road [Test Road]", "tbt 67 0 0.0 100.0 0 0 0 0 0",
-                "hud f201430000" + utf16("Test Road"), "2c 0 0 100 0 0 0 0 0 0");
+                "hud f201430000" + utf16("Test Road"), "2c 0 0 100 0 0 0 0 0 0",
+                "road [Test Road]", "tbt 67 0 0.0 100.0 0 0 0 0 0", "2c 0 0 100 0 0 0 0 0 0");
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(0)));
         expect("India route stop still clears HUD", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2");
     }
@@ -130,64 +132,68 @@ public final class CpTurnsTest {
         expect("maneuvers alone: nothing sent");
 
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 7, U32, i(5000), 9, ENUM, i(MILES), 11, STR, s("0.2"),
-                12, ENUM, i(MILES), 13, U16, i(0, 1, 2, 3), 5, U64, l(1700000000L), 19, STR, s("Maps")));
+                12, ENUM, i(MILES), 13, U16, i(0, 1, 2, 3), 5, U64, l(1700000000L), 19, STR, s("Maps"), 16, U16, i(0), 18, 9, i(1)));
         expect("right turn in 0.2 mi: crossroad, turn, HUD list with the next turn, HUD distance, trip, turns ahead",
-                "road [Main St]", "tbt 67 0 0.0 0.2 0 0 2 0 0", "hud f202434600" + utf16("Main St"), "2c 2 2 0 0 0 0 0 0 0",
+                "road [Main St]", "hud f202434600" + utf16("Main St"), "2c 2 2 0 2 5 0 0 0 0", "tbt 13 0 90.0 1100.0 0 0 3 70 0",
                 "sub 3.1 0 2 22 13 1 1 0.0 -1 0",
-                "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
+                "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}", "lanes f1");
 
         t.routeGuidance(msg(0, U16, i(1), 11, STR, s("0.1")));
         expect("partial update (distance only): same HUD list not resent",
-                "road [Main St]", "tbt 67 0 0.0 0.1 0 0 2 0 0", "2c 2 1 0 0 0 0 0 0 0", "sub 3.1 0 2 22 13 1 1 0.0 -1 0",
+                "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0", "sub 3.1 0 2 22 13 1 1 0.0 -1 0",
                 "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
 
         Iap2NotiMsg lanes = new Iap2NotiMsg();
         Iap2NotiMsg.Iap2ObjGroup l1 = lanes.new Iap2ObjGroup(), l2 = lanes.new Iap2ObjGroup();
         l1.add(1, U16, i(1)).add(2, U16, i(0));
         l2.add(2, U16, i(90, 45)).add(3, U16, i(90));
-        lanes.getItemGroup().add(0, U16, i(1)).add(2, GROUPS, new Iap2NotiMsg.Iap2ObjGroup[] { l1, l2 });
+        lanes.getItemGroup().add(0, U16, i(1)).add(1, U16, i(0)).add(2, GROUPS, new Iap2NotiMsg.Iap2ObjGroup[] { l1, l2 });
         t.lanes(lanes);
         StringBuilder z = new StringBuilder();
         for (int k = 0; k < 14; k++) z.append("00");
-        expect("lanes: straight; right + slight right highlighted", "lanes f102000102" + z + "0100000302");
+        expect("lanes: straight; right + slight right highlighted", "lanes f102000301" + z + "0100000302");
 
         Car.unit = Car.DISTANCE_KM;
         t.routeGuidance(msg(0, U16, i(1), 7, U32, i(800), 11, STR, s("1.5"), 12, ENUM, i(KM)));
         expect("km: turn in the phone's km, trip in m (owner's km, under 1 km), turns ahead in m/km",
-                "road [Main St]", "tbt 67 0 0.0 1.5 0 0 1 0 0", "2c 1 5 1 0 0 0 0 0 0", "sub 800.0 0 0 22 13 1 1 0.0 -1 0",
+                "road [Main St]", "tbt 67 0 0.0 1.5 0 0 1 0 0", "2c 1 5 1 0 0 800 0 0 0", "sub 800.0 0 0 22 13 1 1 0.0 -1 0",
                 "list {1 70 0 [Oak Ave] [] 800.0 0} {2 72 0 [Pine St] [] 2.0 1}");
         Car.unit = Car.DISTANCE_MILES;
 
         t.maneuver(msg(0, U16, i(1), 1, U16, i(0), 5, U32, i(250)));
+        expect("partial primary keeps HUD distances and refreshes retained cluster instruction", "road [Main St]", "tbt 67 0 0.0 1.5 0 0 1 0 0", "2c 1 5 1 2 5 0 0 0 0", "sub 0.5 0 2 22 13 1 1 0.0 -1 0");
         t.routeGuidance(msg(0, U16, i(1), 11, STR, s("0.1"), 12, ENUM, i(MILES)));
-        expect("maneuver update without optional angle retains its explicit right-turn direction",
-                "road [Main St]", "tbt 67 0 0.0 0.1 0 0 2 0 0", "2c 2 1 0 0 0 0 0 0 0", "sub 0.4 0 2 22 13 1 1 0.0 -1 0",
-                "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
+        expect("partial primary still updates current and following distances", "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0", "sub 0.5 0 2 22 13 1 1 0.0 -1 0");
         t.maneuver(maneuver(0, RIGHT, 0, 0, 90, "Main St", 250));
+        expect("restored maneuver renders immediately using the current route state",
+                "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0", "sub 0.5 0 2 22 13 1 1 0.0 -1 0",
+                "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
 
         t.routeGuidance(msg(0, U16, i(1), 7, U32, i(100), 6, U64, l(0), 5, U64, l(0)));
         expect("trip under 161 m with miles: feet; no arrival time",
-                "road [Main St]", "tbt 67 0 0.0 0.1 0 0 2 0 0", "2c 2 1 0 0 0 0 0 0 0", "sub 328.0 0 3 -1 -1 -1 -1 0.0 -1 0",
+                "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0", "sub 328.0 0 3 -1 -1 -1 -1 0.0 -1 0",
                 "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
 
         t.routeGuidance(msg(0, U16, i(1), 7, U32, i(0), 6, U64, l(600)));
         Calendar in10 = Calendar.getInstance();
         in10.add(Calendar.SECOND, 600);
         expect("arrival from the time remaining (no distance)",
-                "road [Main St]", "tbt 67 0 0.0 0.1 0 0 2 0 0", "2c 2 1 0 0 0 0 0 0 0",
-                "sub 0.0 -1 0 " + in10.get(Calendar.HOUR_OF_DAY) + " " + in10.get(Calendar.MINUTE) + " 1 1 0.0 -1 0",
+                "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0",
+                "sub 0.0 0 0 " + in10.get(Calendar.HOUR_OF_DAY) + " " + in10.get(Calendar.MINUTE) + " 1 1 0.0 -1 0",
                 "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
 
         t.routeGuidance(msg(0, U16, i(1), 6, U64, l(0), 5, U64, l(600000000L)));
         expect("arrival as seconds since 2001 (Apple's epoch): 2020-01-06 10:40",
-                "road [Main St]", "tbt 67 0 0.0 0.1 0 0 2 0 0", "2c 2 1 0 0 0 0 0 0 0", "sub 0.0 -1 0 10 40 1 1 0.0 -1 0",
+                "road [Main St]", "2c 2 1 0 2 5 0 0 0 0", "tbt 13 0 90.0 600.0 0 0 3 40 0", "sub 0.0 0 0 10 40 1 1 0.0 -1 0",
                 "list {1 70 0 [Oak Ave] [] " + (800 / 1609f) + " 2} {2 72 0 [Pine St] [] " + (2000 / 1609f) + " 2}");
 
         t.routeGuidance(msg(0, U16, i(1), 19, STR, s("Waze"), 5, U64, l(0)));
         check("source change: route guidance restarted", restarted.await(2, TimeUnit.SECONDS));
         expect("source change (Maps to Waze): HUD cleared; the reset state is 0 until the phone resends it, so cleared again",
-                "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2");
+                "tbt 0 0 0.0 0.0 -1 0 0 0 -1", "sub 0.0 -1 0 0 0 0 0 0.0 -1 0", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2");
 
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(3)));
+        expect("new source starts a fresh route before its maneuver details", "lanes f1");
         t.maneuver(maneuver(5, ARRIVE, 0, 0, 0, "Home Rd", 100));
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(6), 4, STR, s("Home"), 11, STR, s("300"), 12, ENUM, i(FEET), 13, U16, i(5)));
         expect("state 6 with destination, arrival maneuver in 300 ft",
@@ -195,7 +201,7 @@ public final class CpTurnsTest {
                 "2c 3 0 300 0 0 0 0 0 0");
 
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(2)));
-        expect("arrived (state 2): icon 3, no HUD list for it", "road [Home Rd]", "tbt 3 0 0.0 300.0 0 0 3 0 0", "2c 3 0 300 0 0 0 0 0 0");
+        expect("arrived (state 2): icon 3 without stale distance and obsolete HUD list cleared", "road [Home Rd]", "tbt 3 0 0.0 0.0 -1 0 3 0 0", "2c 0 0 0 0 0 0 0 0 0", "hud f2", "hud f2", "dest 0 []");
 
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(0)));
         expect("state 0: HUD cleared", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2");
@@ -209,19 +215,20 @@ public final class CpTurnsTest {
         t.disconnected();
         expect("iAP2 session ended: HUD cleared", "2c 0 0 0 0 0 0 0 0 0", "lanes f1", "hud f2", "hud f2");
         t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 11, STR, s("0.5"), 12, ENUM, i(MILES), 13, U16, i(5), 19, STR, s("Maps")));
-        expect("after the session ended: maneuvers gone, a new source isn't a change", "");
+        expect("after the session ended: maneuvers gone; lanes stay blank", "lanes f1");
         c.calls.clear();
 
         t.maneuver(msg(0, U16, i(7), 1, U16, i(0), 3, ENUM, i(LEFT), 4, STR, s("Comp 7 Rd"), 8, ENUM, i(0), 9, ENUM, i(0), 11, U8, i(-60)));
         t.routeGuidance(msg(0, U16, i(7), 1, ENUM, i(1), 11, STR, s("0.3"), 12, ENUM, i(MILES), 13, U16, i(0)));
-        expect("a second component keeps its own state", "road [Comp 7 Rd]", "tbt 71 0 0.0 0.3 0 0 2 0 0",
-                "hud f201470000" + utf16("Comp 7 Rd"), "2c 2 3 0 0 0 0 0 0 0");
+        expect("a second component keeps its own state", "road [Comp 7 Rd]", "hud f201470000" + utf16("Comp 7 Rd"), "2c 2 3 0 0 0 0 0 0 0", "tbt 13 0 300.0 1600.0 0 0 3 100 0", "lanes f1");
 
         t.maneuver(msg(1, U16, i(0), 3, ENUM, i(STRAIGHT), 4, STR, s("Any Rd"), 8, ENUM, i(0), 9, ENUM, i(0)));
+        expect("id-less late maneuver refreshes the active component immediately",
+                "road [Any Rd]", "tbt 65 0 0.0 0.3 0 0 2 0 0", "hud f201410000" + utf16("Any Rd"), "2c 2 3 0 0 0 0 0 0 0");
         t.routeGuidance(msg(1, ENUM, i(1), 11, STR, s("0.4"), 13, U16, i(0)));
         expect("no component ids: every known component gets it",
-                "road [Any Rd]", "tbt 65 0 0.0 0.4 0 0 2 0 0", "hud f201410000" + utf16("Any Rd"), "2c 2 4 0 0 0 0 0 0 0",
-                "road [Any Rd]", "tbt 65 0 0.0 0.4 0 0 2 0 0", "2c 2 4 0 0 0 0 0 0 0");
+                "road [Any Rd]", "tbt 65 0 0.0 0.4 0 0 2 0 0", "hud f201410000" + utf16("Any Rd"), "2c 2 4 0 0 0 0 0 0 0", "lanes f1",
+                "road [Any Rd]", "tbt 65 0 0.0 0.4 0 0 2 0 0", "hud f201410000" + utf16("Any Rd"), "2c 2 4 0 0 0 0 0 0 0", "lanes f1");
 
         t.routeGuidance(msg(0, U16, i(0), 1, ENUM, i(1), 11, STR, s("0.4"), 13, U16, i(0)));
         expect("component 0's first update: DiPO starts it empty (state 0), so the HUD is cleared",

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "id": "04-reroute",
+  "title": "Reroute and late messages",
+  "description": "Unknown selections clear the HUD. Late details from a cancelled route cannot resurrect it.",
+  "units": "mi",
+  "provenance": "Synthetic fixture. Route geometry and expected output are authored independently of the bridge.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "label": "Stock heading",
+      "heading": 180
+    },
+    {
+      "at": 100,
+      "kind": "maneuver",
+      "label": "Prefetch Cedar Avenue",
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Cedar Avenue",
+      "distanceMetres": 300
+    },
+    {
+      "at": 200,
+      "kind": "maneuver",
+      "label": "Prefetch Oak Street",
+      "index": 20,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "road": "Oak Street",
+      "distanceMetres": 100
+    },
+    {
+      "at": 500,
+      "kind": "route",
+      "label": "Original pair",
+      "state": 1,
+      "selected": [
+        10,
+        20
+      ],
+      "distanceMetres": 300,
+      "distanceText": "0.2",
+      "distanceUnit": 1,
+      "expect": {
+        "hudCount": 2
+      }
+    },
+    {
+      "at": 2500,
+      "kind": "route",
+      "label": "Reroute selects uncached pair",
+      "state": 5,
+      "selected": [
+        40,
+        50
+      ],
+      "expect": {
+        "hudCount": 0,
+        "hudPrimary": null,
+        "hudSecondary": null
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "maneuver",
+      "label": "Prefetch Birch Lane",
+      "index": 50,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "road": "Birch Lane",
+      "distanceMetres": 60,
+      "expect": {
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 6500,
+      "kind": "maneuver",
+      "label": "Prefetch Pine Street",
+      "index": 40,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Pine Street",
+      "distanceMetres": 200,
+      "expect": {
+        "hudCount": 2,
+        "road": "Pine Street"
+      }
+    },
+    {
+      "at": 8500,
+      "kind": "stop",
+      "label": "Cancel before another detail arrives",
+      "expect": {
+        "hudCount": 0,
+        "routeActive": false
+      }
+    },
+    {
+      "at": 10500,
+      "kind": "maneuver",
+      "label": "Prefetch Late Birch Lane",
+      "index": 50,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "road": "Late Birch Lane",
+      "distanceMetres": 50,
+      "expect": {
+        "hudCount": 0,
+        "routeActive": false,
+        "destination": ""
+      }
+    }
+  ]
+}

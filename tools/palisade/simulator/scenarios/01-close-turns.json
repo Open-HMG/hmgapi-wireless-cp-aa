@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "01-close-turns",
+  "title": "Two close turns",
+  "description": "A one-mile countdown followed by a turn just 250 ft beyond it. Watch distance channels, promotion, and compass restoration.",
+  "units": "mi",
+  "provenance": "Synthetic fixture. Route geometry and expected output are authored independently of the bridge.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "label": "Stock compass before guidance",
+      "heading": 315,
+      "expect": {
+        "compassHeading": 315
+      }
+    },
+    {
+      "at": 200,
+      "kind": "maneuver",
+      "label": "Prefetch Cedar Avenue",
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Cedar Avenue",
+      "distanceMetres": 1609
+    },
+    {
+      "at": 400,
+      "kind": "maneuver",
+      "label": "Prefetch Oak Street",
+      "index": 20,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "road": "Oak Street",
+      "distanceMetres": 1609,
+      "distanceText": "250",
+      "distanceUnit": 4
+    },
+    {
+      "at": 600,
+      "kind": "maneuver",
+      "label": "Prefetch River Road",
+      "index": 30,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "River Road",
+      "distanceMetres": 400
+    },
+    {
+      "at": 1000,
+      "kind": "route",
+      "label": "Active route selects turns A and B",
+      "state": 1,
+      "destination": "Test destination",
+      "remainingMetres": 5000,
+      "distanceMetres": 1609,
+      "distanceText": "1.0",
+      "distanceUnit": 1,
+      "selected": [
+        10,
+        20
+      ],
+      "truth": "Vehicle \u2192 Cedar Avenue: 1.0 mi. Cedar Avenue \u2192 Oak Street: 250 ft. Raw and formatted secondary fields deliberately disagree.",
+      "expect": {
+        "hudPrimary": "1.0 mi",
+        "hudSecondary": "250 ft",
+        "hudCount": 2,
+        "destination": "Test destination",
+        "routeActive": true
+      }
+    },
+    {
+      "at": 3000,
+      "kind": "route",
+      "label": "Primary counts down; following separation stays fixed",
+      "distanceMetres": 1287,
+      "distanceText": "0.8",
+      "expect": {
+        "hudPrimary": "0.8 mi",
+        "hudSecondary": "250 ft"
+      }
+    },
+    {
+      "at": 5000,
+      "kind": "route",
+      "label": "Close to the primary turn",
+      "distanceMetres": 100,
+      "distanceText": "328",
+      "distanceUnit": 4,
+      "expect": {
+        "hudPrimary": "328 ft",
+        "hudSecondary": "250 ft"
+      }
+    },
+    {
+      "at": 7000,
+      "kind": "route",
+      "label": "Following turn becomes primary",
+      "selected": [
+        20,
+        30
+      ],
+      "distanceMetres": 76,
+      "distanceText": "250",
+      "distanceUnit": 4,
+      "expect": {
+        "road": "Oak Street",
+        "hudPrimary": "250 ft",
+        "hudSecondary": "0.2 mi"
+      }
+    },
+    {
+      "at": 9000,
+      "kind": "route",
+      "label": "Only the last turn remains",
+      "selected": [
+        30
+      ],
+      "distanceMetres": 300,
+      "distanceText": "984",
+      "distanceUnit": 4,
+      "expect": {
+        "hudCount": 1,
+        "hudSecondary": null
+      }
+    },
+    {
+      "at": 11000,
+      "kind": "stop",
+      "label": "Cancel and restore the remembered stock compass",
+      "expect": {
+        "routeActive": false,
+        "hudCount": 0,
+        "destination": "",
+        "remaining": null,
+        "compassHeading": 315
+      }
+    },
+    {
+      "at": 13000,
+      "kind": "tick",
+      "label": "No messages: retained display state",
+      "expect": {
+        "compassHeading": 315,
+        "hudCount": 0
+      }
+    }
+  ]
+}

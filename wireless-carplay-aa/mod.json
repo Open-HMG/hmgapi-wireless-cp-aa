@@ -7,7 +7,10 @@
     "VysseCodes"
   ],
   "license": "AGPL-3.0",
-  "nemesis_conflicts": ["wireless.projection", "projection.tbt"],
+  "nemesis_conflicts": [
+    "wireless.projection",
+    "projection.tbt"
+  ],
   "description": "Wireless CarPlay and Android Auto on the head unit's hotspot, with turn-by-turn on the cluster and HUD.",
   "system": [
     {
@@ -29,6 +32,16 @@
       ],
       "region": "CAN",
       "firmware": "260206",
+      "features": [
+        "hmgapi.wifi"
+      ]
+    },
+    {
+      "model": [
+        "LX2PE"
+      ],
+      "region": "USA",
+      "firmware": "260507",
       "features": [
         "hmgapi.wifi"
       ]
@@ -109,6 +122,9 @@
       "dipo.bt.set_carplay_bt_address": "replace"
     },
     "native": {
+      "libiap2session.so": [
+        "recipes/iap2-lanes-decoder-fc7cb675.recipe"
+      ],
       "libautoreceiver_infobank.so": [
         "recipes/aa-tbt-48ee793a.recipe",
         "recipes/aa-tbt-a0bea1c4.recipe"

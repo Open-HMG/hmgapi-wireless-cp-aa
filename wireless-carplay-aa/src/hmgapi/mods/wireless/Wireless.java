@@ -88,14 +88,36 @@ public final class Wireless extends ModEntry {
      */
     private void navigation(final ModContext mod, final LoadedApp app) {
         if (!mod.settingBoolean("tbt", true)) return;
-        MethodHook skip = new MethodHook() {
-            @Override
-            protected void beforeHookedMethod(Param p) {
-                if (Car.phoneGuiding(app.context)) p.setResult(null);
-            }
-        };
-        for (String m : NAVI_TBT) mod.hook(null, "framework.navigation_cluster." + m, skip);
+        final ClusterHandoff.NavigationState clusterState = ClusterHandoff.listen(app.context, mod);
+        for (String m : NAVI_TBT) {
+            final boolean rawLane = "update_lane_info".equals(m);
+            final boolean clusterTurn = "update_tbt_info".equals(m);
+            mod.hook(null, "framework.navigation_cluster." + m, new MethodHook() {
+                @Override
+                protected void beforeHookedMethod(Param p) {
+                    boolean phoneGuiding;
+                    if (clusterTurn) {
+                        clusterState.remember(p.args);
+                        phoneGuiding = clusterState.phoneOwnsCluster(Car.androidAutoGuiding(app.context), Car.carPlayGuiding(app.context));
+                    } else phoneGuiding = Car.phoneGuiding(app.context);
+                    if (yieldNavigation(phoneGuiding, rawLane, p.args)) p.setResult(null);
+                }
+            });
+        }
         mod.log("navigation: turn-by-turn yields to the phone in " + app.processName);
+    }
+
+    /** Only navigation's F1 lane frame yields on the raw channel; unrelated data passes. */
+    static boolean yieldNavigation(boolean phoneGuiding, boolean rawLane, Object[] args) {
+        if (!phoneGuiding) return false;
+        if (!rawLane) return true;
+        if (args == null || args.length == 0 || !(args[0] instanceof byte[])) return false;
+        byte[] frame = (byte[]) args[0];
+        return frame.length > 0 && (frame[0] & 0xff) == 0xF1;
+    }
+
+    static boolean supportsIap2LaneFix(String md5) {
+        return "fc7cb675b46a44bd893a1edc054c5e71".equals(md5);
     }
 
     /**
@@ -109,6 +131,16 @@ public final class Wireless extends ModEntry {
     private void iap2(final ModContext mod, LoadedApp app) {
         final ClassLoader cl = app.classLoader;
         if (mod.settingBoolean("tbt", true)) {
+            // The measured native dispatch table gives LaneGuidanceInformation
+            // the maneuver ID (0x5202). Gate the memory-only fix on the whole
+            // stock library as well as the recipe's executable fingerprint.
+            String md5 = ModContext.md5("/system/lib/libiap2session.so");
+            if (supportsIap2LaneFix(md5)) {
+                mod.log("PalisadeHUD t=" + android.os.SystemClock.elapsedRealtime() + " iap2-lanes requesting-memory-fix");
+                mod.nativePatch(app, "libiap2session.so");
+            } else {
+                mod.log("PalisadeHUD t=" + android.os.SystemClock.elapsedRealtime() + " iap2-lanes skipped-unmeasured-library");
+            }
             mod.hook(cl, "iap2.init_info.check_supports_features", new MethodHook() {
                 @Override
                 protected void afterHookedMethod(Param p) {

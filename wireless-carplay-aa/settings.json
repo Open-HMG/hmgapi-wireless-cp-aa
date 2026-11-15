@@ -2,6 +2,14 @@
   "version": 1,
   "settings": [
     {
+      "key": "hud_trace",
+      "type": "toggle",
+      "default": true,
+      "title": "Palisade HUD diagnostics",
+      "apply": "restart",
+      "description": "Records numeric turn and lane fields in HMG-API logs for the local HUD test. Road names and coordinates are excluded from these diagnostic lines."
+    },
+    {
       "key": "tbt",
       "type": "toggle",
       "default": true,

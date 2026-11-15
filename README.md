@@ -25,10 +25,17 @@ Like every HMG-API mod, it checks each file it changes against its stock checksu
 it up, and puts back the exact stock bytes when it's removed. Most of it is hooks and
 in-memory patches (no files changed); the files it does change are listed in the app's plan.
 
+## Palisade navigation draft
+
+The [Palisade integration notes](docs/palisade-navigation.md) distinguish historical
+vehicle evidence from the current off-car port and list unresolved validation.
+Run `python3 tools/palisade/simulator/run.py` for the local schematic replay viewer.
+
 ## Supported cars
 
 | Car | Region | Head unit software |
 |---|---|---|
+| Hyundai Palisade (`LX2PE`) | USA | 260507 (draft; current branch off-car only) |
 | Kia EV6 (`CVEV`) | USA | 260507 |
 | Hyundai Ioniq 5 (`NEEV`, `NEEV23`) | USA | 260507 |
 | Kia EV6 (`CVEV`) | Canada | 260206 |

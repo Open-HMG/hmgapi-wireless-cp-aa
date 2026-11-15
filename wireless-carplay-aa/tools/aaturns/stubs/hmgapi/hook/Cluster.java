@@ -7,6 +7,7 @@ import java.util.List;
 public final class Cluster {
     public static final int UNIT_M = 0, UNIT_KM = 1, UNIT_MI = 2, UNIT_FT = 3, UNIT_YD = 4;
     public final List<String> calls = new ArrayList<String>();
+    public byte[] lastLanes;
 
     void rec(String s) { calls.add(s); }
     static String hex(byte[] b) {
@@ -26,7 +27,7 @@ public final class Cluster {
         rec("2c " + a + " " + b + " " + c + " " + d + " " + e + " " + f + " " + g + " " + h + " " + i);
     }
     public void turnListNew(byte[] f) { rec("hud " + hex(f)); }
-    public void laneInfo(byte[] f) { rec("lanes " + hex(f)); }
+    public void laneInfo(byte[] f) { lastLanes = f.clone(); rec("lanes " + hex(f)); }
     public void destinationName(int type, String name) { rec("dest " + type + " [" + name + "]"); }
     public void crossroadName(String name) { rec("road [" + name + "]"); }
     public static final class Turn {

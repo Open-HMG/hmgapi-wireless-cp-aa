@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "id": "07-roundabout-junctions",
+  "title": "Roundabouts and missing geometry \u00b7 #7",
+  "description": "Existing roundabout mappings for both traffic sides, explicit zero versus omitted exit, and conservative clearing.",
+  "provenance": "Synthetic mapping validation. No exit ordinal, custom artwork or physical left-traffic display acceptance is claimed.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "route",
+      "state": 1,
+      "selected": [
+        10
+      ],
+      "distanceText": "300",
+      "distanceUnit": 4
+    },
+    {
+      "at": 100,
+      "kind": "maneuver",
+      "index": 10,
+      "type": 29,
+      "side": 0,
+      "junction": 1,
+      "exit": 90,
+      "expect": {
+        "clusterIcon": 32,
+        "hudPrimaryIcon": 99,
+        "hudPrimary": "300 ft"
+      }
+    },
+    {
+      "at": 2500,
+      "kind": "maneuver",
+      "index": 10,
+      "distanceMetres": 60,
+      "expect": {
+        "hudPrimaryIcon": 99,
+        "hudCount": 1
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "route",
+      "selected": [
+        20
+      ],
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 6500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 31,
+      "side": 0,
+      "junction": 1,
+      "truth": "An omitted exit angle does not establish a zero-degree roundabout exit.",
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 8500,
+      "kind": "maneuver",
+      "index": 20,
+      "exit": 0,
+      "expect": {
+        "clusterIcon": 97,
+        "hudPrimaryIcon": 97
+      }
+    },
+    {
+      "at": 10500,
+      "kind": "maneuver",
+      "index": 20,
+      "side": 1,
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 12500,
+      "kind": "maneuver",
+      "index": 20,
+      "exit": 0,
+      "expect": {
+        "clusterIcon": 96,
+        "hudPrimaryIcon": 96
+      }
+    },
+    {
+      "at": 14500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 2,
+      "exit": 90,
+      "expect": {
+        "clusterIcon": 99,
+        "hudPrimaryIcon": 99
+      }
+    },
+    {
+      "at": 16500,
+      "kind": "maneuver",
+      "index": 20,
+      "distanceText": "200",
+      "distanceUnit": 4,
+      "expect": {
+        "hudPrimaryIcon": 99
+      }
+    },
+    {
+      "at": 18500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 31,
+      "side": 0,
+      "exit": 181,
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 20500,
+      "kind": "maneuver",
+      "index": 20,
+      "distanceMetres": 30,
+      "truth": "A partial update cannot turn out-of-range geometry into a zero-degree instruction.",
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 22500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 33,
+      "side": 0,
+      "junction": 1,
+      "exit": -90,
+      "expect": {
+        "clusterIcon": 105,
+        "hudPrimaryIcon": 105
+      }
+    },
+    {
+      "at": 24500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 52,
+      "junction": 0,
+      "exit": 0,
+      "expect": {
+        "clusterIcon": 174,
+        "hudPrimaryIcon": 174
+      }
+    },
+    {
+      "at": 26500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 30,
+      "junction": 1,
+      "exit": 0,
+      "truth": "Third-exit metadata uses the supplied straight-through geometry, not an assumed angle derived from the ordinal.",
+      "expect": {
+        "clusterIcon": 97,
+        "hudPrimaryIcon": 97
+      }
+    },
+    {
+      "at": 28500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 36,
+      "exit": 90,
+      "truth": "A later numbered exit can have the same supplied geometry; the symbol does not display an ordinal.",
+      "expect": {
+        "clusterIcon": 99,
+        "hudPrimaryIcon": 99
+      }
+    },
+    {
+      "at": 30500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 46,
+      "exit": -90,
+      "expect": {
+        "clusterIcon": 105,
+        "hudPrimaryIcon": 105
+      }
+    },
+    {
+      "at": 32500,
+      "kind": "disconnect",
+      "expect": {
+        "hudCount": 0,
+        "routeActive": false
+      }
+    }
+  ]
+}

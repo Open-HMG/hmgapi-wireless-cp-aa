@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "id": "03-lane-prefetch",
+  "title": "Lane selection and visibility",
+  "description": "A future lane event cannot replace the selected intersection; visibility gates its presentation.",
+  "units": "km",
+  "provenance": "Synthetic fixture. Route geometry and expected output are authored independently of the bridge.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "label": "Stock heading",
+      "heading": 90
+    },
+    {
+      "at": 100,
+      "kind": "maneuver",
+      "label": "Prefetch Central Boulevard",
+      "index": 10,
+      "type": 3,
+      "side": 0,
+      "junction": 0,
+      "exit": 0,
+      "road": "Central Boulevard",
+      "distanceMetres": 500
+    },
+    {
+      "at": 300,
+      "kind": "lanes",
+      "label": "Prefetch intersection 7",
+      "index": 7,
+      "lanes": [
+        {
+          "angles": [
+            -90
+          ]
+        },
+        {
+          "preferred": [
+            0
+          ]
+        },
+        {
+          "preferred": [
+            0
+          ]
+        },
+        {
+          "angles": [
+            90
+          ]
+        }
+      ],
+      "expect": {
+        "laneCount": 0
+      }
+    },
+    {
+      "at": 500,
+      "kind": "route",
+      "label": "Select prefetched lanes but keep them hidden",
+      "state": 1,
+      "selected": [
+        10
+      ],
+      "laneIndex": 7,
+      "lanesShown": false,
+      "distanceMetres": 500,
+      "expect": {
+        "laneCount": 0
+      },
+      "distanceText": "500",
+      "distanceUnit": 2
+    },
+    {
+      "at": 2500,
+      "kind": "route",
+      "label": "Phone exposes selected lane guidance",
+      "lanesShown": true,
+      "expect": {
+        "laneCount": 4
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "lanes",
+      "label": "Prefetch a later intersection",
+      "index": 8,
+      "lanes": [
+        {
+          "angles": [
+            0
+          ]
+        },
+        {
+          "preferred": [
+            90
+          ]
+        }
+      ],
+      "expect": {
+        "laneCount": 4
+      }
+    },
+    {
+      "at": 6500,
+      "kind": "route",
+      "label": "Promote selected lane event",
+      "laneIndex": 8,
+      "expect": {
+        "laneCount": 2
+      }
+    },
+    {
+      "at": 8500,
+      "kind": "route",
+      "label": "Hide lane guidance",
+      "lanesShown": false,
+      "expect": {
+        "laneCount": 0
+      }
+    },
+    {
+      "at": 10500,
+      "kind": "route",
+      "label": "Missing selected lane event stays blank",
+      "lanesShown": true,
+      "laneIndex": 9,
+      "expect": {
+        "laneCount": 0
+      }
+    },
+    {
+      "at": 12500,
+      "kind": "stop",
+      "label": "Cancellation clears lane cache",
+      "expect": {
+        "laneCount": 0,
+        "compassHeading": 90
+      }
+    }
+  ]
+}

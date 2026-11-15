@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "id": "06-turn-icons-countdown",
+  "title": "Turn icons and primary countdown \u00b7 #4",
+  "description": "Raw-only countdown, exact formatted units, turn promotion, unavailable data and arrival.",
+  "provenance": "Synthetic inputs and explicit expected stock icon IDs. This validates emitted calls, not vehicle artwork.",
+  "units": "mi",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "heading": 270
+    },
+    {
+      "at": 100,
+      "kind": "maneuver",
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Cedar Avenue"
+    },
+    {
+      "at": 200,
+      "kind": "route",
+      "state": 1,
+      "selected": [
+        10
+      ],
+      "distanceText": "500",
+      "distanceUnit": 4,
+      "destination": "Museum",
+      "remainingMetres": 1609,
+      "expect": {
+        "clusterIcon": 13,
+        "hudPrimaryIcon": 67,
+        "clusterDistance": "500 ft",
+        "hudPrimary": "500 ft"
+      }
+    },
+    {
+      "at": 2500,
+      "kind": "route",
+      "distanceMetres": 30,
+      "truth": "Fresh raw countdown drives the tape; cluster number rounds to100ft while accepted HUD integer feet remain98.",
+      "expect": {
+        "hudPrimary": "98 ft",
+        "clusterDistance": "100 ft",
+        "hudPrimaryIcon": 67
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "route",
+      "distanceText": "0.5",
+      "distanceUnit": 1,
+      "expect": {
+        "hudPrimary": "0.5 mi",
+        "clusterDistance": "0.5 mi"
+      }
+    },
+    {
+      "at": 6500,
+      "kind": "route",
+      "selected": [
+        20
+      ],
+      "expect": {
+        "hudCount": 0,
+        "clusterIcon": 0,
+        "clusterDistance": null,
+        "destination": "Museum",
+        "routeActive": true
+      }
+    },
+    {
+      "at": 8500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 1,
+      "side": 0,
+      "junction": 0,
+      "exit": -90,
+      "expect": {
+        "clusterIcon": 70,
+        "hudPrimaryIcon": 70,
+        "hudPrimary": null,
+        "clusterDistance": null
+      }
+    },
+    {
+      "at": 10500,
+      "kind": "route",
+      "distanceText": "100",
+      "distanceUnit": 3,
+      "expect": {
+        "clusterDistance": "300 ft",
+        "hudPrimary": "100 yd"
+      }
+    },
+    {
+      "at": 12500,
+      "kind": "route",
+      "distanceText": "NaN",
+      "expect": {
+        "clusterDistance": null,
+        "hudPrimary": null,
+        "hudPrimaryIcon": 70
+      }
+    },
+    {
+      "at": 14500,
+      "kind": "maneuver",
+      "index": 20,
+      "type": 99,
+      "expect": {
+        "clusterIcon": 0,
+        "hudCount": 0,
+        "destination": "Museum",
+        "routeActive": true
+      }
+    },
+    {
+      "at": 16500,
+      "kind": "maneuver",
+      "index": 30,
+      "type": 4,
+      "side": 0,
+      "junction": 0,
+      "exit": 0
+    },
+    {
+      "at": 18500,
+      "kind": "route",
+      "selected": [
+        30
+      ],
+      "distanceText": "50",
+      "distanceUnit": 2,
+      "expect": {
+        "clusterIcon": 72,
+        "hudPrimaryIcon": 72,
+        "hudPrimary": "50 m"
+      }
+    },
+    {
+      "at": 20500,
+      "kind": "maneuver",
+      "index": 40,
+      "type": 53,
+      "side": 0,
+      "junction": 0,
+      "exit": 0
+    },
+    {
+      "at": 22500,
+      "kind": "route",
+      "selected": [
+        40
+      ],
+      "distanceText": "0.3",
+      "distanceUnit": 0,
+      "expect": {
+        "clusterIcon": 173,
+        "hudPrimaryIcon": 173,
+        "hudPrimary": "0.3 km"
+      }
+    },
+    {
+      "at": 24500,
+      "kind": "maneuver",
+      "index": 50,
+      "type": 12,
+      "side": 0,
+      "junction": 0,
+      "exit": 0
+    },
+    {
+      "at": 26500,
+      "kind": "route",
+      "selected": [
+        50
+      ],
+      "distanceText": "20",
+      "distanceUnit": 4,
+      "expect": {
+        "clusterIcon": 112,
+        "hudPrimaryIcon": 112,
+        "hudPrimary": "20 ft"
+      }
+    },
+    {
+      "at": 28500,
+      "kind": "route",
+      "state": 2,
+      "truth": "The bridge emits arrival, then the real handoff restores the last stock compass heading.",
+      "expect": {
+        "clusterIcon": 8,
+        "compassHeading": 270,
+        "clusterDistance": null,
+        "hudCount": 0,
+        "routeActive": false,
+        "destination": ""
+      }
+    },
+    {
+      "at": 30500,
+      "kind": "stop",
+      "expect": {
+        "hudCount": 0,
+        "compassHeading": 270
+      }
+    }
+  ]
+}

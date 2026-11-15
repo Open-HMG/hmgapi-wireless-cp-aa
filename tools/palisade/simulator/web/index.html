@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Palisade · Display lab</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand"><span class="brand-mark">P</span><span>PALISADE <span class="muted">/ DISPLAY LAB</span></span></a>
+    <div class="top-meta"><span class="live-dot"></span><span id="backend">Connecting to Java…</span><span class="tag">LOCAL</span></div>
+  </header>
+  <main>
+    <section class="intro">
+      <div><div class="eyebrow">NAVIGATION WORKBENCH <span class="muted">/ 01</span></div><h1>The drive, on your desk.</h1><p>Replay the production bridge. Inspect every display update.</p></div>
+      <div class="intro-actions"><button id="edit" class="button secondary" disabled>Scenario JSON</button><button id="import-button" class="button secondary">Import scenario</button><input type="file" id="import" accept=".json,application/json"><button id="export" class="button secondary" disabled>Export replay ↗</button></div>
+    </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <section class="scenario-bar" aria-label="Scenario selection">
+      <div class="scenario-select"><label for="scenario" class="eyebrow">TEST SCENARIO</label><select id="scenario" disabled><option>Loading scenarios…</option></select></div>
+      <p id="description">Compiling and loading the Java replay.</p>
+      <div class="run-summary" id="summary" aria-live="polite">—</div>
+    </section>
+    <div class="workspace">
+      <div class="previews">
+        <section class="panel cluster-panel" aria-label="Instrument cluster preview">
+          <div class="panel-heading"><h2><span class="panel-number">01</span> Instrument cluster</h2><span class="tag">SCHEMATIC</span></div>
+          <div class="cluster-screen">
+            <div class="cluster-top"><span>HYUNDAI <b>PALISADE</b></span><span id="ownership" class="status">IDLE</span></div>
+            <div class="cluster-instruments">
+              <div class="dial speed-dial"><div class="dial-label">SPEED</div><strong>0</strong><span id="speed-unit">MPH</span><div class="dial-bottom">P <span>●</span></div></div>
+              <div class="cluster-nav">
+                <div id="cluster-guidance"></div>
+                <div id="cluster-road" class="cluster-road">No turn output</div>
+                <div class="destination-label">DESTINATION</div><div id="destination">—</div>
+                <div class="trip-row"><span id="remaining">—</span><span id="eta">ETA —</span></div>
+              </div>
+              <div class="dial rpm-dial"><div class="dial-label">ENGINE</div><strong>0.0</strong><span>×1000 RPM</span><div class="dial-bottom">E <span>▰▰▰▱</span> F</div></div>
+            </div>
+            <div class="cluster-bottom"><span>ILLUSTRATIVE GAUGES · NO VEHICLE TELEMETRY</span><div id="cluster-lanes" class="lanes"></div><span id="context-status">Waiting for output</span></div>
+          </div>
+          <div class="panel-footer"><span id="cluster-output">Last cluster output · —</span><span>OEM loading conditions remain unmodeled</span></div>
+        </section>
+        <section class="panel hud-panel" aria-label="Head-up display preview">
+          <div class="panel-heading"><h2><span class="panel-number">02</span> Head-up display</h2><span class="tag">SCHEMATIC</span></div>
+          <div class="hud-screen">
+            <div class="road-grid" aria-hidden="true"></div>
+            <div class="hud-content"><div class="hud-upper"><div class="hud-turn primary"><div id="hud-primary-icon" class="hud-icon"></div><strong id="hud-primary">—</strong></div><div id="hud-following-wrap" class="hud-turn following"><span class="eyebrow">THEN</span><div id="hud-secondary-icon" class="hud-icon"></div><strong id="hud-secondary">—</strong></div></div><div id="hud-road" class="hud-road">No guidance output</div><div id="hud-lanes" class="lanes"></div></div>
+            <span class="hud-corner">F2 ICONS <span>+</span> 2C DISTANCES <span>+</span> F1 LANES</span>
+          </div>
+          <div class="panel-footer"><span>Display pairing and spacing are modeled</span><span id="hud-output">Last HUD output · —</span></div>
+        </section>
+        <section class="transport panel" aria-label="Playback controls">
+          <div class="transport-top"><div class="playback-buttons"><button id="first" aria-label="First event" title="First event">|‹</button><button id="previous" aria-label="Previous event" title="Previous event">‹</button><button id="play" class="play" aria-label="Play replay">▶</button><button id="next" aria-label="Next event" title="Next event">›</button><button id="last" aria-label="Last event" title="Last event">›|</button></div><span class="time"><span id="time">00:00.000</span><span class="muted"> / </span><span id="duration">00:00.000</span></span><label class="speed-label" for="speed">SPEED <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
+          <input id="timeline" type="range" min="0" max="1" value="0" step="1" aria-label="Replay timeline">
+          <div class="transport-bottom"><span id="event-position">EVENT —</span><span id="event-label">Waiting for replay</span><span class="key-hint">Space play/pause · ← → step</span></div>
+        </section>
+        <section class="truth panel"><span class="eyebrow">INDEPENDENT EXPECTATION</span><p id="truth">Select an event to compare its expected display with actual emitted output.</p><div id="step-checks" class="step-checks"></div></section>
+      </div>
+      <aside class="inspector panel" aria-label="Replay inspector">
+        <div class="panel-heading"><h2>Signal inspector</h2><span class="signal-dot"></span></div>
+        <div class="inspector-stats"><div><span class="eyebrow">EVENTS</span><strong id="event-count">—</strong></div><div><span class="eyebrow">CALLS</span><strong id="call-count">—</strong></div><div><span class="eyebrow">CHECKS</span><strong id="check-count">—</strong></div></div>
+        <div class="tabs" role="tablist" aria-label="Inspector views"><button role="tab" id="tab-events" aria-controls="inspector-content" aria-selected="true" data-tab="events">Events</button><button role="tab" id="tab-output" aria-controls="inspector-content" aria-selected="false" data-tab="output">Output</button><button role="tab" id="tab-input" aria-controls="inspector-content" aria-selected="false" data-tab="input">Input</button><button role="tab" id="tab-trace" aria-controls="inspector-content" aria-selected="false" data-tab="trace">Trace</button></div>
+        <div id="inspector-content" class="inspector-content" role="tabpanel" aria-labelledby="tab-events"></div>
+        <div class="bridge-state"><span class="eyebrow">BRIDGE SELECTION</span><div><span>Component <b id="component">—</b></span><span>Current <b id="current">—</b></span><span>Following <b id="following">—</b></span></div></div>
+      </aside>
+    </div>
+    <footer class="fidelity"><div><span class="confidence-dot"></span><strong>Real bridge. Modeled receiver.</strong><span>Java executes the current source; previews do not emulate Hyundai display firmware.</span></div><details><summary>Fidelity & source evidence</summary><div id="evidence"></div></details></footer>
+  </main>
+  <dialog id="editor"><form method="dialog"><div class="dialog-heading"><div><span class="eyebrow">SCENARIO / JSON V1</span><h2>Edit replay inputs</h2></div><button class="button secondary" aria-label="Close scenario editor">✕</button></div><p>Edit timestamps, fields and independent expectations. Apply runs a fresh Java process.</p><label for="scenario-json" class="sr-only">Scenario JSON</label><textarea id="scenario-json" spellcheck="false"></textarea><div id="editor-error" class="error" role="alert" hidden></div><div class="dialog-bottom"><span>Processed locally · 1 MiB maximum</span><button id="apply" type="button" class="button primary">Apply & replay</button></div></form></dialog>
+</body>
+</html>

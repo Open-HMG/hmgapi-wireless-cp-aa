@@ -23,6 +23,7 @@ import hmgapi.hook.LoadedApp;
 import hmgapi.hook.MethodHook;
 import hmgapi.hook.ModContext;
 import hmgapi.hook.Points;
+import hmgapi.mods.wireless.ClusterHandoff;
 
 /**
  * The Wireless mod in DiPO (the CarPlay app): its app part, linked against DiPO's
@@ -71,6 +72,11 @@ public final class Dipo {
         mod.log(m);
     }
 
+    static void hudTrace(String message) {
+        if (mod.settingBoolean("hud_trace", true))
+            log("PalisadeHUD t=" + android.os.SystemClock.elapsedRealtime() + " " + message);
+    }
+
     static void error(String m, Throwable t) {
         mod.error(m, t);
     }
@@ -104,6 +110,9 @@ public final class Dipo {
             public void onServiceDisconnected(ComponentName name) {
                 iap2 = null;
                 log("DiPO: iAP2 server gone");
+                if (tbt) post(new Runnable() {
+                    @Override public void run() { turns.disconnected(); }
+                });
             }
         }, Context.BIND_AUTO_CREATE);
         log("DiPO: iAP2 server " + (bound ? "binding" : "can't be bound"));
@@ -123,21 +132,25 @@ public final class Dipo {
         HandlerThread t = new HandlerThread("hmgapi-cp-tbt");
         t.start();
         turnsHandler = new Handler(t.getLooper());
+        final ClusterHandoff.Publisher clusterState = ClusterHandoff.publish(app.context, turnsHandler);
         turns = new CpTurns(app.context, c, new Runnable() {
             @Override
             public void run() {
                 restartRouteGuidance();
             }
+        }, new CpTurns.RouteStateSink() {
+            @Override public void active(boolean value) { clusterState.active(value); }
         });
         rg = new RgListener();
         mod.hook(app.classLoader, "dipo.iap2_proxy.stop_route_guidance", new MethodHook() {
             @Override
             protected void beforeHookedMethod(Param p) {
                 if (OWN.get() != null) return;
+                hudTrace("stop-request reason=stock-proxy");
                 post(new Runnable() {
                     @Override
                     public void run() {
-                        turns.stop();
+                        turns.stop("stock-proxy");
                     }
                 });
             }
@@ -153,6 +166,7 @@ public final class Dipo {
                 try {
                     run.run();
                 } catch (Throwable x) {
+                    hudTrace("guidance-exception type=" + x.getClass().getName());
                     error("CarPlay turn-by-turn", x);
                 }
             }
@@ -176,6 +190,7 @@ public final class Dipo {
         if (s == null) return;
         OWN.set(Boolean.TRUE);
         try {
+            hudTrace("restart reason=source-change");
             s.Iap2SvcStopRouteGuidanceUpdate(RG_COMPONENTS);
             Thread.sleep(200);
             s.Iap2SvcStartRouteGuidanceUpdate(RG_COMPONENTS, true, true);
@@ -195,6 +210,7 @@ public final class Dipo {
         public void disconnected(final int component) {
             // as DiPO's listener: component 2 isn't a session, and the bridge's own sessions end while wireless CarPlay runs
             if (component == 2 || (bridge && Bridge.dipoIgnoreDisconnect(component))) return;
+            hudTrace("disconnect component=" + component);
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -205,13 +221,27 @@ public final class Dipo {
 
         @Override
         public void notify(final int what, int a1, int a2, final Iap2NotiMsg msg) {
-            if ((what != RG_UPDATE && what != RG_MANEUVER && what != RG_LANES) || msg == null) return;
+            if (what != RG_UPDATE && what != RG_MANEUVER && what != RG_LANES) {
+                // Discover additional guidance notification types without
+                // reading their unmeasured payloads or phone/session arguments.
+                hudTrace("route-unhandled what=" + what);
+                return;
+            }
+            if (msg == null) return;
+            if (what == RG_LANES) hudTrace("lane-callback received");
             post(new Runnable() {
                 @Override
                 public void run() {
                     if (what == RG_UPDATE) turns.routeGuidance(msg);
                     else if (what == RG_MANEUVER) turns.maneuver(msg);
-                    else turns.lanes(msg);
+                    else {
+                        try {
+                            turns.lanes(msg);
+                        } catch (Throwable x) {
+                            hudTrace("lane-parse-failed type=" + x.getClass().getName());
+                            error("CarPlay lane guidance", x);
+                        }
+                    }
                 }
             });
         }

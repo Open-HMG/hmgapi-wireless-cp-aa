@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "id": "02-route-context",
+  "title": "Route without turn details",
+  "description": "Destination and remaining distance must reach the cluster before an icon is available.",
+  "units": "mi",
+  "provenance": "Synthetic fixture. Route geometry and expected output are authored independently of the bridge.",
+  "events": [
+    {
+      "at": 0,
+      "kind": "compass",
+      "label": "Remember stock heading",
+      "heading": 270
+    },
+    {
+      "at": 500,
+      "kind": "route",
+      "label": "Active route without selected maneuver",
+      "state": 1,
+      "destination": "Museum",
+      "remainingMetres": 1609,
+      "expect": {
+        "destination": "Museum",
+        "remaining": "1.0 mi",
+        "hudCount": 0,
+        "routeActive": true
+      }
+    },
+    {
+      "at": 2500,
+      "kind": "route",
+      "label": "Remaining distance updates independently",
+      "remainingMetres": 1287,
+      "expect": {
+        "remaining": "0.8 mi"
+      }
+    },
+    {
+      "at": 4500,
+      "kind": "route",
+      "label": "Destination changes during state 1",
+      "destination": "Library",
+      "expect": {
+        "destination": "Library"
+      }
+    },
+    {
+      "at": 6000,
+      "kind": "maneuver",
+      "label": "Prefetch Departure",
+      "index": 10,
+      "type": 11,
+      "side": 0,
+      "junction": 0,
+      "exit": 0,
+      "road": "Departure",
+      "distanceMetres": 100
+    },
+    {
+      "at": 6500,
+      "kind": "route",
+      "label": "Unsupported departure still carries route context",
+      "selected": [
+        10
+      ],
+      "remainingMetres": 804,
+      "expect": {
+        "remaining": "0.5 mi",
+        "hudCount": 0
+      }
+    },
+    {
+      "at": 8000,
+      "kind": "maneuver",
+      "label": "Prefetch Cedar Avenue",
+      "index": 10,
+      "type": 2,
+      "side": 0,
+      "junction": 0,
+      "exit": 90,
+      "road": "Cedar Avenue",
+      "distanceMetres": 100
+    },
+    {
+      "at": 8500,
+      "kind": "route",
+      "label": "Supported turn arrives later",
+      "distanceMetres": 100,
+      "distanceText": "328",
+      "distanceUnit": 4,
+      "expect": {
+        "hudCount": 1,
+        "hudPrimary": "328 ft",
+        "destination": "Library"
+      }
+    },
+    {
+      "at": 10500,
+      "kind": "disconnect",
+      "label": "Phone disconnect clears route context",
+      "expect": {
+        "destination": "",
+        "remaining": null,
+        "hudCount": 0,
+        "routeActive": false,
+        "compassHeading": 270
+      }
+    }
+  ]
+}

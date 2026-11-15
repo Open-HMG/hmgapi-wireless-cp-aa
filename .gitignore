@@ -1,1 +1,7 @@
 out/
+private/
+__pycache__/
+*.pyc
+*.key
+*.p12
+*.keystore
