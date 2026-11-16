@@ -36,6 +36,7 @@ in-memory patches; disk changes appear in the app's plan.
 | Car | Region | Head unit software |
 |---|---|---|
 | Kia EV6 (`CVEV`) | USA | 260507 |
+| Hyundai Palisade (`LX2PE`) — baseline candidate; vehicle check pending | USA | 260507 |
 | Hyundai Ioniq 5 (`NEEV`, `NEEV23`) | USA | 260507 |
 | Hyundai Ioniq 5 (`NEEV`, `NEEV23`) | USA | 260903 |
 | Kia EV6 (`CVEV`) | Canada | 260206 |
@@ -47,6 +48,9 @@ the owner confirmed wireless Android Auto and Google Maps directions on the dash
 with private build `2.2.0-beta.101`. This is one owner report on the exact firmware;
 CarPlay, HUD/AR behavior and every maneuver/lifecycle case are not separately
 validated.
+
+Palisade baseline validation and the required [HMG-API #199](https://github.com/Open-HMG/HMG-API/pull/199) map are described in
+[the baseline notes](docs/palisade-baseline.md). Vehicle validation is pending.
 
 The list is `system` in [`wireless-carplay-aa/mod.json`](wireless-carplay-aa/mod.json).
 It needs the head unit's Wi-Fi hardware and a hook map for the car in HMG-API
