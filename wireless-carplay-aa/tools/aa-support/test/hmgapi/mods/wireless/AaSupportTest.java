@@ -157,6 +157,18 @@ public final class AaSupportTest {
         check(!AaTbtSupport.supportsDigest(null), "unknown digest rejected");
         check(!AaTbtSupport.supportsDigest(""), "empty digest rejected");
         check(!AaTbtSupport.supportsDigest("48ee793af8b86052503b8c952b034730"), "different library rejected");
+        check(Wireless.shouldRedirectPhoneProjection(Wireless.BROKEN_PROJECTION_PACKAGE,
+                Wireless.BROKEN_PROJECTION_ACTIVITY, false, true),
+                "missing Ioniq 5 shortcut destination is redirected to Device Connections");
+        check(!Wireless.shouldRedirectPhoneProjection(Wireless.BROKEN_PROJECTION_PACKAGE,
+                Wireless.BROKEN_PROJECTION_ACTIVITY, true, true),
+                "a stock shortcut destination which exists is preserved");
+        check(!Wireless.shouldRedirectPhoneProjection("another.package",
+                Wireless.BROKEN_PROJECTION_ACTIVITY, false, true),
+                "an unrelated package is never redirected");
+        check(!Wireless.shouldRedirectPhoneProjection(Wireless.BROKEN_PROJECTION_PACKAGE,
+                Wireless.BROKEN_PROJECTION_ACTIVITY, false, false),
+                "a missing replacement fails closed");
 
         File directory = Files.createTempDirectory("aa-support-").toFile();
         File unknown = new File(directory, "unknown.so");
@@ -189,6 +201,10 @@ public final class AaSupportTest {
             ModContext menu = enabled();
             wireless.appLoaded(menu, new LoadedApp(Wireless.BTSETTINGS));
             check(menu.hooks.containsKey("btsettings.projection_helper.open_wireless_page"), "projection menu unaffected");
+            ModContext popup = enabled();
+            wireless.appLoaded(popup, new LoadedApp(Wireless.MOBIS_SYSTEM));
+            check(popup.hooks.containsKey("framework.activity.start_activity_for_result"),
+                    "Phone Projection popup redirect is installed in the Mobis system popup");
 
             ModContext off = enabled();
             off.settings.put("tbt", false);

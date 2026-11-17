@@ -22,7 +22,7 @@ The firewall workaround is off by default; the other settings below are on:
 | Wireless CarPlay | The Bluetooth bridge and Wi-Fi sessions CarPlay needs |
 | Shared CarPlay identity | A typed API other mods use to contribute vehicle identity without competing native patches |
 | CarPlay music and Siri over Wi-Fi | AAC and Opus audio (`libleafiaaac.so`, using the head unit's own codecs) |
-| Settings > Phone Projection opens Device Connections | A hook in the Settings app (US/Canada) |
+| Phone Projection shortcuts open Device Connections | Hooks in Settings (US/Canada) and the system popup; missing stock destinations open Device Connections |
 | USB drives and hubs don't start wired Android Auto | A hook in the Android Auto app: a USB stick no longer blocks wireless Android Auto |
 | Allow wireless Android Auto through the hotspot firewall | **Off by default.** Experimental Ioniq 6 workaround: new IPv4 TCP connections on hotspot port 40515 |
 

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.hardware.usb.UsbDevice;
 
 import hmgapi.hook.Car;
@@ -53,10 +54,16 @@ public final class Wireless extends ModEntry {
     }
 
     static final String BTSETTINGS = "com.android.btsettings";
+    static final String MOBIS_SYSTEM = "com.mobis.system";
     static final String GPM = "com.google.android.projection.sink";
     static final String GAL_SERVICE = "com.google.android.projection.service.GalReceiverService";
     static final int USB_CLASS_MASS_STORAGE = 8, USB_CLASS_HUB = 9;
     static final String HELPER = "btsettings.projection_helper";
+    static final String BROKEN_PROJECTION_PACKAGE = "com.daudio.app.deviceconnections";
+    static final String BROKEN_PROJECTION_ACTIVITY =
+            "com.daudio.app.deviceconnections.ui.connectivitySettings.PhoneProjectionSettingsActivity";
+    static final String DEVICE_CONNECTIONS_ACTIVITY =
+            "com.android.settings2.bluetooth.DeviceConnectionSettingActivity";
 
     static final String NAVIGATION = "com.mnsoft.navi";
     static final String DIPO = "com.daudio.app.dipo";
@@ -87,6 +94,7 @@ public final class Wireless extends ModEntry {
         if (GPM.equals(app.packageName) && mod.settingBoolean("usb_drives", true)) usbDrives(mod, app);
         if (GPM.equals(app.packageName) && mod.settingBoolean("tbt", true)) gpmTurnByTurn(mod, app);
         if (BTSETTINGS.equals(app.packageName) && mod.settingBoolean("menu", true)) phoneProjectionMenu(mod, app);
+        if (MOBIS_SYSTEM.equals(app.packageName) && mod.settingBoolean("menu", true)) phoneProjectionPopup(mod, app);
         if (DIPO.equals(app.packageName) && (mod.settingBoolean("tbt", true) || mod.settingBoolean("bridge", true) || mod.settingBoolean("audio", true))) dipo(mod, app);
     }
 
@@ -374,5 +382,46 @@ public final class Wireless extends ModEntry {
             }
         });
         mod.log("Phone Projection menu hook in " + app.processName);
+    }
+
+    /**
+     * Some US Ioniq 5 builds have a stock Phone Projection shortcut whose confirmation
+     * popup starts an Activity from the absent Device Connections app. The Settings app's
+     * DeviceConnectionSettingActivity is the working destination on those builds. Redirect
+     * only that exact missing component; cars which have it keep their stock shortcut.
+     */
+    private void phoneProjectionPopup(final ModContext mod, LoadedApp app) {
+        mod.hook(app.classLoader, "framework.activity.start_activity_for_result", new MethodHook() {
+            @Override
+            protected void beforeHookedMethod(Param p) {
+                Intent original = (Intent) p.args[0];
+                ComponentName target = original == null ? null : original.getComponent();
+                if (target == null || !BROKEN_PROJECTION_PACKAGE.equals(target.getPackageName())
+                        || !BROKEN_PROJECTION_ACTIVITY.equals(target.getClassName())) return;
+                ComponentName replacement = new ComponentName(BTSETTINGS, DEVICE_CONNECTIONS_ACTIVITY);
+                if (!shouldRedirectPhoneProjection(target.getPackageName(), target.getClassName(),
+                        hasActivity((Context) p.thisObject, target),
+                        hasActivity((Context) p.thisObject, replacement))) return;
+                p.args[0] = new Intent(original).setComponent(replacement);
+                mod.log("Phone Projection popup: missing " + target.flattenToShortString()
+                        + ", opening " + replacement.flattenToShortString());
+            }
+        });
+        mod.log("Phone Projection popup hook in " + app.processName);
+    }
+
+    static boolean shouldRedirectPhoneProjection(String pkg, String cls, boolean originalExists,
+            boolean replacementExists) {
+        return BROKEN_PROJECTION_PACKAGE.equals(pkg) && BROKEN_PROJECTION_ACTIVITY.equals(cls)
+                && !originalExists && replacementExists;
+    }
+
+    private static boolean hasActivity(Context context, ComponentName component) {
+        try {
+            context.getPackageManager().getActivityInfo(component, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
 }

@@ -43,9 +43,9 @@
       "key": "menu",
       "type": "toggle",
       "default": true,
-      "title": "Settings > Phone Projection opens Device Connections",
+      "title": "Phone Projection shortcuts open Device Connections",
       "apply": "restart",
-      "description": "A hook in the Settings app (no files changed). US/Canada only; other regions keep the stock choice."
+      "description": "Hooks in the Settings and system popup apps (no files changed). US/Canada Settings and broken shortcuts open Device Connections; other choices stay stock."
     },
     {
       "key": "usb_drives",
