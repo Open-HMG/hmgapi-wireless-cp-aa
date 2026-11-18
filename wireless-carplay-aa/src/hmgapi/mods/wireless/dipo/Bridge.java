@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import hmgapi.hook.Points;
+import hmgapi.mods.wireless.FocusGuard;
 
 /**
  * Wireless CarPlay's Bluetooth bridge, in DiPO (from the bridge build, com.ev6.cpwl).
@@ -182,6 +183,7 @@ final class Bridge {
 
     static void scheduleSppConnect(final String addr) {
         if (addr == null || !enabled() || sUsb || sSession || sCpWireless) return;
+        FocusGuard.onCpConnecting(Dipo.mod, context);
         handler().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -197,11 +199,16 @@ final class Bridge {
         }, SPP_CONNECT_DELAY_MS);
     }
 
-    static void onSppUp(final String addr) {
+    static void onSppUp(String addr) {
+        onSppUp(addr, true);
+    }
+
+    static void onSppUp(final String addr, boolean notifyFocus) {
         if (addr == null || sSession) return;
         sAddr = addr;
         if (sCpClient || sCpWireless || !enabled() || sUsb) return;
         sSession = true;
+        if (notifyFocus) FocusGuard.onCpConnecting(Dipo.mod, context);
         handler().post(new Runnable() {
             @Override
             public void run() {
@@ -236,7 +243,7 @@ final class Bridge {
             public void run() {
                 try {
                     HfDeviceBTCMManager m = sBtcm;
-                    if (m != null && !sUsb && !sSession && addr.equals(sAddr) && m.IbtcmIsSppConnectedDevice(addr)) onSppUp(addr);
+                    if (m != null && !sUsb && !sSession && addr.equals(sAddr) && m.IbtcmIsSppConnectedDevice(addr)) onSppUp(addr, false);
                 } catch (Throwable t) {
                     error("onUsbGone", t);
                 }
@@ -573,6 +580,7 @@ final class Bridge {
             return;
         }
         sAddr = null;
+        FocusGuard.onCpAborted(Dipo.mod, context);
         if (sSession) {
             sSession = false;
             sendDetach();

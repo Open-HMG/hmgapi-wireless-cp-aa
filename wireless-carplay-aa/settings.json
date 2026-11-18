@@ -86,6 +86,14 @@
       "title": "CarPlay's own log (troubleshooting)",
       "apply": "restart",
       "description": "For finding out why wireless CarPlay disconnects: the CarPlay system logs each session in detail (as TccCarPlay), so Record a problem or a log capture shows why it ended. Its lines name your phone (model and name). Leave it off unless someone helping you asks for it. Takes effect when the head unit restarts."
+    },
+    {
+      "key": "projection_focus",
+      "type": "toggle",
+      "default": false,
+      "title": "Keep Phone Projection in focus when Bluetooth Audio competes at startup",
+      "apply": "restart",
+      "description": "Hooks in Bluetooth Audio, CarPlay and Android Auto (no files changed): while wireless CarPlay or Android Auto is connecting and during the initial handoff right after it starts, Bluetooth Audio yields focus instead of stealing the screen or audio, then switches once to projection (waiting if a camera view is up, and leaving FM/AM/SiriusXM/USB alone). Picking Bluetooth Audio from the media menu or streaming from a passenger's phone during a session works normally. Takes effect when the head unit restarts."
     }
   ]
 }

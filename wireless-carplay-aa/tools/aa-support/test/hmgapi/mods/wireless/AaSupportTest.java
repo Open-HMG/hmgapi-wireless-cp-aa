@@ -200,6 +200,35 @@ public final class AaSupportTest {
             wireless.appLoaded(stock, new LoadedApp(Wireless.GPM));
             check(stock.natives.isEmpty() && stock.hooks.size() == 1, "native GPM TBT is preserved at step 999");
             Car.step = 105;
+
+            FocusGuard.reset();
+            ModContext defaultFocus = enabled();
+            wireless.appLoaded(defaultFocus, new LoadedApp(FocusPolicy.PKG_BTAUDIO));
+            wireless.appLoaded(defaultFocus, new LoadedApp(Wireless.GPM));
+            check(FocusGuard.btAudioCalls == 0 && FocusGuard.gpmCalls == 0,
+                    "projection_focus is off by default in btaudio and GPM");
+            ModContext dipoAllOff = new ModContext();
+            dipoAllOff.settings.put("tbt", false);
+            dipoAllOff.settings.put("bridge", false);
+            dipoAllOff.settings.put("audio", false);
+            wireless.appLoaded(dipoAllOff, new LoadedApp(Wireless.DIPO));
+            check(dipoAllOff.cpStarts == 0, "DiPO part stays off when tbt, bridge, audio and projection_focus are all off");
+
+            FocusGuard.reset();
+            ModContext focusOn = new ModContext();
+            focusOn.settings.put("tbt", false);
+            focusOn.settings.put("usb_drives", false);
+            focusOn.settings.put("bridge", false);
+            focusOn.settings.put("audio", false);
+            focusOn.settings.put("projection_focus", true);
+            wireless.appLoaded(focusOn, new LoadedApp(FocusPolicy.PKG_BTAUDIO));
+            wireless.appLoaded(focusOn, new LoadedApp(Wireless.GPM));
+            wireless.appLoaded(focusOn, new LoadedApp(Wireless.DIPO));
+            check(FocusGuard.btAudioCalls == 1 && FocusGuard.gpmCalls == 1 && focusOn.cpStarts == 1,
+                    "projection_focus=true enables FocusGuard in btaudio, GPM and DiPO");
+            check(focusOn.hooks.containsKey("framework.context_impl.start_service"),
+                    "projection_focus=true installs GAL start observer even when usb_drives=false");
+
             if (args.length > 0) {
                 File ceev = new File(args[0]);
                 check(ceev.isFile(), "private CEEV library exists");

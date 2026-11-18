@@ -23,6 +23,7 @@ import hmgapi.hook.LoadedApp;
 import hmgapi.hook.MethodHook;
 import hmgapi.hook.ModContext;
 import hmgapi.hook.Points;
+import hmgapi.mods.wireless.FocusGuard;
 
 /**
  * The Wireless mod in DiPO (the CarPlay app): its app part, linked against DiPO's
@@ -101,6 +102,7 @@ public final class Dipo {
             m.nativePatch(a, "libCarPlayAudio.so");   // offer AAC and Opus on Wi-Fi
             m.nativePatch(a, "libCarPlayUtils.so");   // its AudioConverter calls go to libleafiaaac.so
         }
+        if (FocusGuard.active(m)) FocusGuard.dipo(m, a);
         if (tbt) turnByTurn();
         if (!tbt && !bridge) return;
         rgWatch();
