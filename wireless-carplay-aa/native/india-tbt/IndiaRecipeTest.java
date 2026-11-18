@@ -46,7 +46,7 @@ public final class IndiaRecipeTest {
         byte[] stock = Files.readAllBytes(Paths.get(args[0]));
         check(MemRecipe.md5(stock).equals("b794003497e7382b739a231cb1d2bf10"), "exact India library required");
         MemRecipe recipe = MemRecipe.parse(new String(Files.readAllBytes(Paths.get(args[1])), "UTF-8"));
-        final long base = 0x10000000L, textEnd = 0x1a60d4L;
+        final long base = 0x10000000L, textEnd = 0x1a60ecL;
         for (long offset : new long[]{0x1c4120L, 0x300120L, -0x100ee0L}) {
             Memory memory = new Memory(stock, base, base+offset);
             MemRecipe.Result result = recipe.apply(memory, base, textEnd, MemRecipe.md5(stock));
