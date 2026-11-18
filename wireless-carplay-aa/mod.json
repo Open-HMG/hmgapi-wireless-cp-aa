@@ -10,7 +10,8 @@
   "nemesis_conflicts": [
     "wireless.projection",
     "projection.tbt",
-    "enhanced.projection"
+    "enhanced.projection",
+    "codevalley.ev6.india.projection"
   ],
   "description": "Wireless CarPlay and Android Auto on the head unit's hotspot, with turn-by-turn on the cluster and HUD.",
   "api": {
@@ -85,6 +86,14 @@
       "model": "CN7NPE",
       "region": "USA",
       "firmware": "260903",
+      "features": [
+        "hmgapi.wifi"
+      ]
+    },
+    {
+      "model": "CVEV",
+      "region": "IND",
+      "firmware": "260430",
       "features": [
         "hmgapi.wifi"
       ]
@@ -174,7 +183,8 @@
       "libautoreceiver_infobank.so": [
         "recipes/aa-tbt-48ee793a.recipe",
         "recipes/aa-tbt-a0bea1c4.recipe",
-        "recipes/aa-tbt-dbfe7bd2.recipe"
+        "recipes/aa-tbt-dbfe7bd2.recipe",
+        "recipes/aa-tbt-b7940034.recipe"
       ],
       "libCarPlayCore.so": [
         "recipes/carplay-core-frames-ef49c09b.recipe",

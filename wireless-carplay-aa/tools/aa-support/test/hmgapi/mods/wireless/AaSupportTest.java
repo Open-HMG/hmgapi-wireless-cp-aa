@@ -154,6 +154,7 @@ public final class AaSupportTest {
         check(AaTbtSupport.supportsDigest("48ee793af8b86052503b8c952b034731"), "existing US library retained");
         check(AaTbtSupport.supportsDigest("a0bea1c4992ea983a8190c4e032d7190"), "existing Canadian library retained");
         check(AaTbtSupport.supportsDigest("dbfe7bd2e36152a50f97fed612cf6326"), "CEEV library has an exact recipe");
+        check(AaTbtSupport.supportsDigest("b794003497e7382b739a231cb1d2bf10"), "India EV6 library has an exact recipe");
         check(!AaTbtSupport.supportsDigest(null), "unknown digest rejected");
         check(!AaTbtSupport.supportsDigest(""), "empty digest rejected");
         check(!AaTbtSupport.supportsDigest("48ee793af8b86052503b8c952b034730"), "different library rejected");

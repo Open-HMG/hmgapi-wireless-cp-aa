@@ -11,7 +11,8 @@
     "CEEV.USA.0000.V016.010.260903": "ceev_us",
     "CEEV.CAN.0000.V016.010.260903": "ceev_ca_260903",
     "NQ5HEV.USA.": "nq5",
-    "CN7NPE.USA.0000.V016.010.260903": "cn7npe_us"
+    "CN7NPE.USA.0000.V016.010.260903": "cn7npe_us",
+    "CVEV.IND.0000.V010.001.260430": "ev6_in"
   },
   "stock": "patches/{set}/stock",
   "expect": "patches/{set}/expect",

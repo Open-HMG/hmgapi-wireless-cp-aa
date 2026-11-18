@@ -17,7 +17,7 @@ R=$T/root
 . "${HMGAPI_SDK:?set HMGAPI_SDK to the unpacked HMG-API mod SDK}/test/lib.sh"
 # its NEMESIS package refuses the NEMESIS packages that change what it changes (mod.json "nemesis_conflicts")
 d=$(HMGAPI_NEMESIS_CONFLICTS=/dev/null python3 "$HMGAPI_SDK/bin/nemesis-meta.py" depends hmgapi.wireless-carplay-aa 'hmgapi@>=1.0' --mod "$M/mod.json")
-if [ "$d" = "hmgapi@>=1.0,!wireless.projection,!projection.tbt,!enhanced.projection" ]; then echo "ok    NEMESIS package refuses wireless.projection, projection.tbt and enhanced.projection"
+if [ "$d" = "hmgapi@>=1.0,!wireless.projection,!projection.tbt,!enhanced.projection,!codevalley.ev6.india.projection" ]; then echo "ok    NEMESIS package refuses conflicting wireless, TBT and India packages"
 else echo "FAIL  NEMESIS package depends: [$d]"; exit 1; fi
 python3 "$M/tools/ioniq6/integration.py"
 [ -d "$S/app" ] || { echo "no stock tree at $S (skipped)"; exit 0; }
