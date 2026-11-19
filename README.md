@@ -33,6 +33,8 @@ removed. Native recipes verify the bytes at each patch site. The Ioniq 6 feature
 configuration also has a required result checksum. Most changes are hooks and
 in-memory patches; disk changes appear in the app's plan.
 
+See [India EV6 port and validation limits](docs/ev6-ind-260430.md).
+
 ## Supported cars
 
 | Car | Region | Head unit software |
@@ -41,6 +43,7 @@ in-memory patches; disk changes appear in the app's plan.
 | Hyundai Ioniq 5 (`NEEV`, `NEEV23`, `NEEV23SE`) | USA | 260507 |
 | Hyundai Ioniq 5 (`NEEV`, `NEEV23`, `NEEV23SE`) | USA | 260903 |
 | Kia EV6 (`CVEV`) | Canada | 260206 |
+| Kia EV6 (`CVEV`) — off-car only, needs India hook map | India | 260430 |
 | Hyundai Ioniq 5 (`NEEV`) | Canada | 260206 |
 | Hyundai Ioniq 5 (`NEEV`), same files as the US 260903 build | Canada | 260903 |
 | Hyundai Ioniq 6 (`CEEV`) | USA | 260507 |

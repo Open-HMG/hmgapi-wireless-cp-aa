@@ -11,7 +11,8 @@ final class AaTbtSupport {
     private AaTbtSupport() {}
 
     static boolean supportsDigest(String digest) {
-        return "48ee793af8b86052503b8c952b034731".equals(digest)
+        return "b794003497e7382b739a231cb1d2bf10".equals(digest)
+                || "48ee793af8b86052503b8c952b034731".equals(digest)
                 || "a0bea1c4992ea983a8190c4e032d7190".equals(digest)
                 || "dbfe7bd2e36152a50f97fed612cf6326".equals(digest);
     }
