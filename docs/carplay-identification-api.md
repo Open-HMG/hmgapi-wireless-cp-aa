@@ -87,6 +87,17 @@ Connector power is expressed in watts. Supported engine constants are `ENGINE_GA
 `ENGINE_DIESEL`, `ENGINE_ELECTRIC` and `ENGINE_CNG`. Supported connector constants are
 `CONNECTOR_CCS`, `CONNECTOR_CHADEMO` and `CONNECTOR_AC`.
 
+A vehicle may advertise up to eight distinct connector types. At least one DC connector and
+one AC connector are required. Duplicate connector types are rejected. iAP2 represents
+maximum input power once per current class rather than once per physical connector, so the
+serializer advertises the greatest contributed maximum for DC and for AC.
+
+Adapters are vehicle facts and belong in the consumer mod's profile or settings, not in
+Wireless. A consumer should rebuild and replace its immutable `VehicleIdentity` when an
+adapter setting changes. New physical connector standards also require an authoritative
+iAP2 wire value; do not infer one from Apple's public Intents API, whose values are a
+different contract.
+
 The display name is the vehicle name contributed to CarPlay's vehicle information. It is
 not the name shown by HMG-API itself, and this API does not provide live battery, range or
 routing data.
@@ -153,6 +164,6 @@ retry and native failure messages are logged separately under `CarPlay identific
 
 The exported contract is
 [`CarPlayIdentification`](../wireless-carplay-aa/src/hmgapi/mods/wireless/api/CarPlayIdentification.java).
-`API_VERSION` is currently `2`. Compatibility should be expressed primarily through the
+`API_VERSION` is currently `3`. Compatibility should be expressed primarily through the
 consumer's Wireless version range: a future incompatible API belongs in a new Wireless
 major version rather than being guessed from the runtime object.
