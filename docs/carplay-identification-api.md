@@ -90,9 +90,16 @@ Connector power is expressed in watts. Supported engine constants are `ENGINE_GA
 `CONNECTOR_NACS_AC`. The old `CONNECTOR_CCS` and `CONNECTOR_AC` names remain aliases for
 CCS1 and J1772.
 
-A vehicle may advertise up to nine distinct connector types. At least one DC connector and
-one AC connector are required. Duplicate connector types are rejected. Each connector has
-its own iAP2 maximum-power parameter, so `maximumPowerW` is preserved per connector.
+A vehicle may advertise up to nine distinct connector types. Duplicate connector types are
+rejected, but Wireless does not classify connectors or require any AC/DC combination. The
+named constants above are conveniences for known iAP2 values; the contributing mod remains
+responsible for choosing connector values that are valid for its target protocol and phone.
+
+The two-argument `Connector(type, maximumPowerW)` constructor uses the standard iAP2
+maximum-power parameter `12 + type`. A contributor using another connector assignment can
+provide that parameter explicitly with
+`Connector(type, maximumPowerParameter, maximumPowerW)`. Wireless validates only structural
+bounds and uniqueness before serializing the contributor's values.
 
 Adapters are vehicle facts and belong in the consumer mod's profile or settings, not in
 Wireless. A consumer should rebuild and replace its immutable `VehicleIdentity` when an

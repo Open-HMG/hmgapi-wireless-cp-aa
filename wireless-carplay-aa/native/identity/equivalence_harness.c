@@ -55,16 +55,18 @@ int test_main(void){
     root_lookup=root_values;info_lookup=stock_lookup;status_lookup=stock_lookup;wireless_lookup=wireless_values;raw_builder=build;
     lock_mutex=mutex;unlock_mutex=mutex;protect_page=protect;hook_mailbox=&mailbox;
     static const int standard_connectors[]={0,2};
+    static const int standard_power_ids[]={12,14};
     static const int standard_powers[]={235000,10900};
     static const int multiple_connectors[]={0,7,2};
+    static const int multiple_power_ids[]={12,19,14};
     static const int multiple_powers[]={235000,235000,10900};
-    result=configure("Kia EV6",7,2,standard_connectors,standard_powers,2,"",0);slot=0;
+    result=configure("Kia EV6",7,2,standard_connectors,standard_power_ids,standard_powers,2,"",0);slot=0;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
-    result|=configure("Kia EV6",7,2,standard_connectors,standard_powers,2,"THEME1:985:19.0",15);slot=1;
+    result|=configure("Kia EV6",7,2,standard_connectors,standard_power_ids,standard_powers,2,"THEME1:985:19.0",15);slot=1;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
-    result|=configure("",0,-1,0,0,0,"THEME1:985:19.0",15);slot=2;
+    result|=configure("",0,-1,0,0,0,0,"THEME1:985:19.0",15);slot=2;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
-    result|=configure("Kia EV6",7,2,multiple_connectors,multiple_powers,3,"",0);slot=3;
+    result|=configure("Kia EV6",7,2,multiple_connectors,multiple_power_ids,multiple_powers,3,"",0);slot=3;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
     return 0;
 }

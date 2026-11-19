@@ -98,6 +98,8 @@ public interface CarPlayIdentification {
                 for (int j = 0; j < i; j++)
                     if (this.connectors[j].type == connector.type)
                         throw new IllegalArgumentException("duplicate connector type");
+                    else if (this.connectors[j].maximumPowerParameter == connector.maximumPowerParameter)
+                        throw new IllegalArgumentException("duplicate connector maximum-power parameter");
             }
         }
     }
@@ -105,14 +107,22 @@ public interface CarPlayIdentification {
     /** One physical charging connector and its advertised maximum input power. */
     final class Connector {
         public final int type;
+        public final int maximumPowerParameter;
         public final int maximumPowerW;
 
         public Connector(int type, int maximumPowerW) {
-            if (type < VehicleIdentity.CONNECTOR_CCS1 || type > VehicleIdentity.CONNECTOR_NACS_AC)
+            this(type, 12 + type, maximumPowerW);
+        }
+
+        public Connector(int type, int maximumPowerParameter, int maximumPowerW) {
+            if (type < 0 || type > 0xff)
                 throw new IllegalArgumentException("connector type");
+            if (maximumPowerParameter < 0 || maximumPowerParameter > 0xffff)
+                throw new IllegalArgumentException("maximum power parameter");
             if (maximumPowerW < 1 || maximumPowerW > 1000000)
                 throw new IllegalArgumentException("maximumPowerW");
             this.type = type;
+            this.maximumPowerParameter = maximumPowerParameter;
             this.maximumPowerW = maximumPowerW;
         }
     }

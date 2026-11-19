@@ -64,36 +64,27 @@ final class IdentityInstaller {
         CarPlayIdentification.ThemeIdentity theme = registry.theme();
         if (vehicle == null && theme == null) { if (loaded) NativeIdentity.shutdown(); armed = false; return; }
         int[] connectorTypes = new int[vehicle == null ? 0 : vehicle.connectors.length];
+        int[] powerParameters = new int[connectorTypes.length];
         int[] connectorPowers = new int[connectorTypes.length];
-        int dcCount = 0, acCount = 0;
         if (vehicle != null) {
             for (int i = 0; i < vehicle.connectors.length; i++) {
                 CarPlayIdentification.Connector connector = vehicle.connectors[i];
                 connectorTypes[i] = connector.type;
+                powerParameters[i] = connector.maximumPowerParameter;
                 connectorPowers[i] = connector.maximumPowerW;
-                if (isAc(connector.type)) acCount++; else dcCount++;
             }
-            if (dcCount == 0 || acCount == 0)
-                throw new IllegalStateException("CarPlay EV identity requires at least one DC and one AC connector");
         }
         if (!loaded) { NativeIdentity.load(); loaded = true; }
         try {
             byte[] name = vehicle == null ? new byte[0] : vehicle.displayName.getBytes("UTF-8");
             byte[] themeId = theme == null ? new byte[0] : theme.encoded().getBytes("US-ASCII");
             int rc = NativeIdentity.configure(name, vehicle == null ? -1 : vehicle.engineType,
-                    connectorTypes, connectorPowers, themeId);
+                    connectorTypes, powerParameters, connectorPowers, themeId);
             if (rc != 0) throw new NativeFailure(rc);
             armed = true;
         } catch (java.io.UnsupportedEncodingException impossible) {
             throw new AssertionError(impossible);
         }
-    }
-
-    private static boolean isAc(int type) {
-        return type == CarPlayIdentification.VehicleIdentity.CONNECTOR_J1772
-                || type == CarPlayIdentification.VehicleIdentity.CONNECTOR_MENNEKES
-                || type == CarPlayIdentification.VehicleIdentity.CONNECTOR_GBT_AC
-                || type == CarPlayIdentification.VehicleIdentity.CONNECTOR_NACS_AC;
     }
 
     private static void failure(ModContext mod, String message, Throwable t) {

@@ -37,6 +37,9 @@ public final class IdentityRegistryHarness {
         } catch (IllegalArgumentException expected) {
             check("duplicate connector type".equals(expected.getMessage()), "duplicate connector rejected");
         }
+        CarPlayIdentification.Connector opaque = new CarPlayIdentification.Connector(42, 54, 1000);
+        check(opaque.type == 42 && opaque.maximumPowerParameter == 54,
+                "contributor-defined connector accepted");
         System.out.println("PASS mock mods compose independent vehicle and theme contributions");
     }
 

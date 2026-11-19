@@ -7,6 +7,6 @@ final class NativeIdentity {
     static void loadTarget() { System.load("/system/lib/libiap2session.so"); }
     static void load() { System.load("/system/lib/libcarplayidentity.so"); }
     static native int configure(byte[] displayName, int engineType, int[] connectorTypes,
-            int[] connectorPowersW, byte[] themeIdentity);
+            int[] maximumPowerParameters, int[] connectorPowersW, byte[] themeIdentity);
     static native void shutdown();
 }

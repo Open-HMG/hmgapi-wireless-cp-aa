@@ -25,7 +25,7 @@ static char display_name[321];
 static char theme[97];
 static u32 engine=2,connector;
 #define CONNECTOR_MAX 9
-static u32 connector_types[CONNECTOR_MAX],connector_powers[CONNECTOR_MAX],connector_count;
+static u32 connector_types[CONNECTOR_MAX],power_parameter_ids[CONNECTOR_MAX],connector_powers[CONNECTOR_MAX],connector_count;
 static Param info_copy[5+CONNECTOR_MAX*2],status_copy[15];
 #define WIRELESS_GROUP 24
 #define WIRELESS_MAX 8
@@ -56,7 +56,7 @@ static void *info_value(u16 id,u16 type,u16 *n,void *key,int *more){
     if(id==2)return &engine;
     if(id==6 || id==8)return display_name;
     if(id==11)return &connector;
-    if(id>=12 && id<=20)return &connector_powers[id-12];
+    for(u32 i=0;i<connector_count;i++)if(id==power_parameter_ids[i])return &connector_powers[i];
     return info_lookup(id,type,n,key,more);
 }
 static void *status_value(u16 id,u16 type,u16 *n,void *key,int *more){return status_lookup(id,type,n,key,more);}
@@ -128,20 +128,17 @@ static int bind(void){
     status_table=get_status(&n);if(n!=13 || !status_table)return -26;
     return 0;
 }
-static int configure(const char *name,u32 len,int engine_type,const int *types,const int *powers,u32 type_count,const char *theme_id,u32 theme_len){
+static int configure(const char *name,u32 len,int engine_type,const int *types,const int *power_ids,const int *powers,u32 type_count,const char *theme_id,u32 theme_len){
     if(!hook_mailbox){int rc=bind();if(rc)return rc;}
     int vehicle=len!=0,themed=theme_len!=0;
     if(!vehicle && !themed)return -12;
-    if(vehicle && (!string_ok(name,len) || len>320 || engine_type<0 || engine_type>3 || !types || !powers
-            || type_count<2 || type_count>CONNECTOR_MAX))return -12;
+    if(vehicle && (!string_ok(name,len) || len>320 || engine_type<0 || engine_type>3 || !types || !power_ids || !powers
+            || type_count<1 || type_count>CONNECTOR_MAX))return -12;
     if(vehicle){
-        int has_dc=0,has_ac=0;
         for(u32 i=0;i<type_count;i++){
-            if(types[i]<0 || types[i]>8 || powers[i]<1 || powers[i]>1000000)return -12;
-            for(u32 j=0;j<i;j++)if(types[j]==types[i])return -12;
-            if(types[i]==2 || types[i]==4 || types[i]==6 || types[i]==8)has_ac=1;else has_dc=1;
+            if(types[i]<0 || types[i]>255 || power_ids[i]<0 || power_ids[i]>65535 || powers[i]<1 || powers[i]>1000000)return -12;
+            for(u32 j=0;j<i;j++)if(types[j]==types[i] || power_ids[j]==power_ids[i])return -12;
         }
-        if(!has_dc || !has_ac)return -12;
     }
     if(themed){
         if(!wireless_lookup || !string_ok(theme_id,theme_len) || theme_len>96)return wireless_lookup?-12:-18;
@@ -152,13 +149,13 @@ static int configure(const char *name,u32 len,int engine_type,const int *types,c
     copy(theme,theme_id,theme_len);theme[theme_len]=0;
     if(vehicle){
         copy(display_name,name,len);display_name[len]=0;engine=(u32)engine_type;connector_count=type_count;
-        for(u32 i=0;i<type_count;i++){connector_types[i]=(u32)types[i];connector_powers[types[i]]=(u32)powers[i];}
+        for(u32 i=0;i<type_count;i++){connector_types[i]=(u32)types[i];power_parameter_ids[i]=(u32)power_ids[i];connector_powers[i]=(u32)powers[i];}
         for(u32 i=0;i<5;i++){
             info_copy[i]=info_table[i];
             if(info_copy[i].id==2 || info_copy[i].id==6 || info_copy[i].id==8){info_copy[i].used=1;info_copy[i].init=info_copy[i].length=info_copy[i].done=0;}
         }
         for(u32 i=0;i<type_count;i++){info_copy[5+i]=parameter(11,8);info_copy[5+i].init=(u32)connector_init[i];}
-        for(u32 i=0;i<type_count;i++)info_copy[5+type_count+i]=parameter((u16)(12+types[i]),6);
+        for(u32 i=0;i<type_count;i++)info_copy[5+type_count+i]=parameter((u16)power_ids[i],6);
         for(u32 i=0;i<13;i++){status_copy[i]=status_table[i];u16 id=status_copy[i].id;if(id==3 || id==6 || id==11 || id==15)status_copy[i].used=1;}
         status_copy[13]=parameter(21,12);status_copy[14]=parameter(30,12);
     }
@@ -167,15 +164,16 @@ static int configure(const char *name,u32 len,int engine_type,const int *types,c
     unlock_mutex(&identity_mutex);return result;
 }
 
-JNIEXPORT jint JNICALL Java_hmgapi_mods_wireless_NativeIdentity_configure(JNIEnv *env,jclass cls,jbyteArray name,jint engine_type,jintArray connectors,jintArray powers,jbyteArray theme_id){
-    (void)cls;if(!name || !connectors || !powers || !theme_id)return -12;jsize n=(*env)->GetArrayLength(env,name),c=(*env)->GetArrayLength(env,connectors),p=(*env)->GetArrayLength(env,powers),t=(*env)->GetArrayLength(env,theme_id);
-    if(n>320 || c>CONNECTOR_MAX || p!=c || t>96)return -12;char bytes[321],theme_bytes[97];int connector_bytes[CONNECTOR_MAX],power_bytes[CONNECTOR_MAX];
+JNIEXPORT jint JNICALL Java_hmgapi_mods_wireless_NativeIdentity_configure(JNIEnv *env,jclass cls,jbyteArray name,jint engine_type,jintArray connectors,jintArray power_ids,jintArray powers,jbyteArray theme_id){
+    (void)cls;if(!name || !connectors || !power_ids || !powers || !theme_id)return -12;jsize n=(*env)->GetArrayLength(env,name),c=(*env)->GetArrayLength(env,connectors),i=(*env)->GetArrayLength(env,power_ids),p=(*env)->GetArrayLength(env,powers),t=(*env)->GetArrayLength(env,theme_id);
+    if(n>320 || c>CONNECTOR_MAX || i!=c || p!=c || t>96)return -12;char bytes[321],theme_bytes[97];int connector_bytes[CONNECTOR_MAX],power_id_bytes[CONNECTOR_MAX],power_bytes[CONNECTOR_MAX];
     if(n)(*env)->GetByteArrayRegion(env,name,0,n,(jbyte*)bytes);
     if(c)(*env)->GetIntArrayRegion(env,connectors,0,c,(jint*)connector_bytes);
+    if(i)(*env)->GetIntArrayRegion(env,power_ids,0,i,(jint*)power_id_bytes);
     if(p)(*env)->GetIntArrayRegion(env,powers,0,p,(jint*)power_bytes);
     if(t)(*env)->GetByteArrayRegion(env,theme_id,0,t,(jbyte*)theme_bytes);
     if((*env)->ExceptionCheck(env))return -12;
-    return configure(bytes,(u32)n,engine_type,connector_bytes,power_bytes,(u32)c,theme_bytes,(u32)t);
+    return configure(bytes,(u32)n,engine_type,connector_bytes,power_id_bytes,power_bytes,(u32)c,theme_bytes,(u32)t);
 }
 JNIEXPORT void JNICALL Java_hmgapi_mods_wireless_NativeIdentity_shutdown(JNIEnv *env,jclass cls){
     (void)env;(void)cls;__atomic_store_n(&configured,0,__ATOMIC_RELEASE);if(hook_mailbox)set_handler(0);
