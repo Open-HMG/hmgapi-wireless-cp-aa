@@ -11,9 +11,9 @@ public final class IdentityRegistryHarness {
             @Override public void log(String message) { log.append(message).append('\n'); }
         });
         CarPlayIdentification.Connector[] connectors = {
-            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS, 235000),
-            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_CHADEMO, 50000),
-            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_AC, 10900)
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS1, 235000),
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_NACS_DC, 235000),
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_J1772, 10900)
         };
         registry.registerVehicle("fixture.ev", new CarPlayIdentification.VehicleIdentity("Fixture EV",
                 CarPlayIdentification.VehicleIdentity.ENGINE_ELECTRIC, connectors));

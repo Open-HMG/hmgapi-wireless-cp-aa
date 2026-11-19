@@ -62,10 +62,20 @@ public interface CarPlayIdentification {
         public static final int ENGINE_DIESEL = 1;
         public static final int ENGINE_ELECTRIC = 2;
         public static final int ENGINE_CNG = 3;
-        public static final int CONNECTOR_CCS = 0;
-        public static final int CONNECTOR_CHADEMO = 1;
-        public static final int CONNECTOR_AC = 2;
-        public static final int MAX_CONNECTORS = 8;
+        public static final int CONNECTOR_CCS1 = 0;
+        public static final int CONNECTOR_CCS2 = 1;
+        public static final int CONNECTOR_J1772 = 2;
+        public static final int CONNECTOR_CHADEMO = 3;
+        public static final int CONNECTOR_MENNEKES = 4;
+        public static final int CONNECTOR_GBT_DC = 5;
+        public static final int CONNECTOR_GBT_AC = 6;
+        public static final int CONNECTOR_NACS_DC = 7;
+        public static final int CONNECTOR_NACS_AC = 8;
+        /** Compatibility alias for the original North American CCS API. */
+        public static final int CONNECTOR_CCS = CONNECTOR_CCS1;
+        /** Compatibility alias for the original North American AC API. */
+        public static final int CONNECTOR_AC = CONNECTOR_J1772;
+        public static final int MAX_CONNECTORS = 9;
 
         public final String displayName;
         public final int engineType;
@@ -98,7 +108,7 @@ public interface CarPlayIdentification {
         public final int maximumPowerW;
 
         public Connector(int type, int maximumPowerW) {
-            if (type < VehicleIdentity.CONNECTOR_CCS || type > VehicleIdentity.CONNECTOR_AC)
+            if (type < VehicleIdentity.CONNECTOR_CCS1 || type > VehicleIdentity.CONNECTOR_NACS_AC)
                 throw new IllegalArgumentException("connector type");
             if (maximumPowerW < 1 || maximumPowerW > 1000000)
                 throw new IllegalArgumentException("maximumPowerW");

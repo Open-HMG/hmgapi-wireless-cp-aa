@@ -71,9 +71,9 @@ should log that condition and continue without its optional CarPlay identity fea
 ```java
 CarPlayIdentification.Connector[] connectors = {
     new CarPlayIdentification.Connector(
-            CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS, 235000),
+            CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS1, 235000),
     new CarPlayIdentification.Connector(
-            CarPlayIdentification.VehicleIdentity.CONNECTOR_AC, 10900)
+            CarPlayIdentification.VehicleIdentity.CONNECTOR_J1772, 10900)
 };
 
 identity.registerVehicle(mod.id,
@@ -85,18 +85,19 @@ identity.registerVehicle(mod.id,
 
 Connector power is expressed in watts. Supported engine constants are `ENGINE_GASOLINE`,
 `ENGINE_DIESEL`, `ENGINE_ELECTRIC` and `ENGINE_CNG`. Supported connector constants are
-`CONNECTOR_CCS`, `CONNECTOR_CHADEMO` and `CONNECTOR_AC`.
+`CONNECTOR_CCS1`, `CONNECTOR_CCS2`, `CONNECTOR_J1772`, `CONNECTOR_CHADEMO`,
+`CONNECTOR_MENNEKES`, `CONNECTOR_GBT_DC`, `CONNECTOR_GBT_AC`, `CONNECTOR_NACS_DC` and
+`CONNECTOR_NACS_AC`. The old `CONNECTOR_CCS` and `CONNECTOR_AC` names remain aliases for
+CCS1 and J1772.
 
-A vehicle may advertise up to eight distinct connector types. At least one DC connector and
-one AC connector are required. Duplicate connector types are rejected. iAP2 represents
-maximum input power once per current class rather than once per physical connector, so the
-serializer advertises the greatest contributed maximum for DC and for AC.
+A vehicle may advertise up to nine distinct connector types. At least one DC connector and
+one AC connector are required. Duplicate connector types are rejected. Each connector has
+its own iAP2 maximum-power parameter, so `maximumPowerW` is preserved per connector.
 
 Adapters are vehicle facts and belong in the consumer mod's profile or settings, not in
 Wireless. A consumer should rebuild and replace its immutable `VehicleIdentity` when an
-adapter setting changes. New physical connector standards also require an authoritative
-iAP2 wire value; do not infer one from Apple's public Intents API, whose values are a
-different contract.
+adapter setting changes. Consumers should advertise NACS DC and NACS AC independently:
+a DC-only CCS-to-NACS adapter does not add NACS AC compatibility.
 
 The display name is the vehicle name contributed to CarPlay's vehicle information. It is
 not the name shown by HMG-API itself, and this API does not provide live battery, range or
