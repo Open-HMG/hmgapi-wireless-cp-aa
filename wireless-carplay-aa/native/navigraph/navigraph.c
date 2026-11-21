@@ -15,7 +15,8 @@
  *
  * Checked on the US 260507 engine (libExSLNavi.so md5 caa8d4c2..., from its own code):
  * component 0x7200 and vtable slot 0x20 as GetVehiclePosition uses them; stConnectLink
- * stride 0x58 (mArray<stConnectLink>::operator[]); mArray {items, count, capacity, grow,
+ * stride 0x58 (mArray<stConnectLink>::operator[]); GetLinkPos/GetLinkLen(false) are the
+ * millimeter fields at 0x7c/0x78 divided by 1000; mArray {items, count, capacity, grow,
  * u16 module} with grow 16; CVehiclePosition (~0x120 bytes), CEntityLink and CEntityNode
  * (~0x28) well inside the 1 KB buffers.
  *
@@ -29,7 +30,7 @@ typedef __UINTPTR_TYPE__ uptr;
 typedef void *(*resolver)(const char *);
 
 struct connection { u64 parcel, link; };
-struct snapshot { u64 parcel, link; u32 direction, overpass, underpass, count; struct connection edges[32]; };
+struct snapshot { u64 parcel, link; u32 direction, overpass, underpass, count, pos, len; struct connection edges[32]; };
 union storage { u64 align; u8 bytes[1024]; };
 struct array { void *items; u32 count, capacity, grow; u16 module, pad; };
 struct point_i32 { int x, y; };
@@ -40,6 +41,7 @@ struct api {
     void (*position_ctor)(void *); void (*position_dtor)(void *);
     void (*display_position)(void *, void *, u8);
     u64 (*parcel)(void *); u64 (*link)(void *); u32 (*direction)(void *);
+    u32 (*link_pos)(void *, u8); u32 (*link_len)(void *, u8);   /* meters with false */
     void *(*allocator_default)(void); void (*allocator_ctor)(void *, void *);
     void (*entity_ctor)(void *, const void *); void (*entity_dtor)(void *);
     int (*initialize)(void *, u64, u64, u16);
@@ -60,7 +62,7 @@ static void zero(void *p, u32 n) { u8 *b = p; while (n--) *b++ = 0; }
 
 #define BIND(field, name) do { *(void **)(&a->field) = find(name); if (!a->field) { a->missing = name; return -21; } } while (0)
 
-/* every engine function the reader calls; -21 (a->missing names it) if one isn't there */
+/* every engine function the reader calls (30); -21 (a->missing names it) if one isn't there */
 int navigraph_bind(struct api *a, resolver find, u16 module) {
     if (!a || !find) return -1;
     zero(a, sizeof(*a));
@@ -73,6 +75,8 @@ int navigraph_bind(struct api *a, resolver find, u16 module) {
     BIND(parcel, "_ZN16CVehiclePosition11GetParcelIdEv");
     BIND(link, "_ZN16CVehiclePosition9GetLinkIdEv");
     BIND(direction, "_ZN16CVehiclePosition12GetDirectionEv");
+    BIND(link_pos, "_ZN16CVehiclePosition10GetLinkPosEb");
+    BIND(link_len, "_ZN16CVehiclePosition10GetLinkLenEb");
     BIND(allocator_default, "_ZN14mByteAllocator19GetDefaultAllocatorEv");
     BIND(allocator_ctor, "_ZN16mEntityAllocatorC2EP14mByteAllocator");
     BIND(entity_ctor, "_ZN11CEntityLinkC2ERK16mEntityAllocator");
@@ -173,7 +177,8 @@ void *navigraph_elf_lookup(const u8 *base, const char *name) {
     return 0;
 }
 
-/* the map-matched link and the links the car can go on to from it */
+/* the map-matched link, the car's meters along it and its length (CVehiclePosition::GetLinkPos
+ * and GetLinkLen with false: the engine keeps millimeters), and the links the car can go on to */
 int navigraph_current(struct api *a, struct snapshot *out) {
     if (!a || !out) return -1;
     zero(out, sizeof(*out));
@@ -188,6 +193,7 @@ int navigraph_current(struct api *a, struct snapshot *out) {
     if (!info) { a->component_delete(0x7200, component); a->position_dtor(&position); return -3; }
     a->display_position(info, &position, 0);
     out->parcel = a->parcel(&position); out->link = a->link(&position); out->direction = a->direction(&position);
+    out->pos = a->link_pos(&position, 0); out->len = a->link_len(&position, 0);
     a->component_delete(0x7200, component); a->position_dtor(&position);
     if (out->parcel == ~(u64)0 || out->link == ~(u64)0) return -4;
     a->allocator_ctor(&allocator, a->allocator_default());

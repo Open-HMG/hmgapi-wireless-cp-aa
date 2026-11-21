@@ -56,6 +56,12 @@ public final class Wireless extends ModEntry {
         this.aaLibrary = aaLibrary;
     }
 
+    /** side streets from the car's map: needs turn-by-turn and the car's own format (TURN frames) */
+    static boolean mapSideStreets(ModContext mod) {
+        return mod.settingBoolean("tbt_map_side_streets", false) && mod.settingBoolean("tbt", true)
+                && mod.settingBoolean("tbt_standard", false);
+    }
+
     private boolean aaTbtSupported() {
         if (aaTbtSupported == null) aaTbtSupported = AaTbtSupport.supports(aaLibrary);
         return aaTbtSupported;
@@ -138,15 +144,17 @@ public final class Wireless extends ModEntry {
      * it always do so. On an engine build with no recipe nothing changes, and the log says so.
      *
      * Setting navi_road_graph (a test, off by default): NaviGraph reads the engine's road
-     * graph at the intersection ahead and logs its roads (the source Android Auto's side
-     * streets will need). Read and log only.
+     * graph at the intersection ahead and logs its roads. Read and log only.
+     * Setting tbt_map_side_streets (off by default): NaviGraph answers Android Auto's
+     * questions about the junction of the turn it's showing (MapJunction, in GPM).
      */
     private void navigation(final ModContext mod, final LoadedApp app) {
         if (mod.settingBoolean("navi_side_streets", false)) {
             mod.nativePatch(app, "libExSLNavi.so");
             mod.log("navigation: side streets on the car navigation's own turns, if its engine build has a recipe");
         }
-        if (mod.settingBoolean("navi_road_graph", false)) NaviGraph.start(mod, app);
+        boolean probe = mod.settingBoolean("navi_road_graph", false), answer = mapSideStreets(mod);
+        if (probe || answer) NaviGraph.start(mod, app, probe, answer);
         if (!mod.settingBoolean("tbt", true)) return;
         // Keep stock navigation available when this mod cannot supply AA turns. CarPlay
         // and cars with GPM's own turn-by-turn retain their existing arbitration.
@@ -299,8 +307,9 @@ public final class Wireless extends ModEntry {
                                     if (c == null) return;
                                     turns.put(receiver, t = new AaTurns(app.context, c, handler));
                                     t.standardTurns = mod.settingBoolean("tbt_standard", false);
+                                    if (mapSideStreets(mod)) t.junctions = new MapJunction(app.context, handler);
                                     mod.log("Android Auto: navigation callback received; cluster bridge created"
-                                            + (t.standardTurns ? " (standard turns)" : ""));
+                                            + (t.standardTurns ? " (standard turns" + (t.junctions != null ? ", side streets from the car's map)" : ")") : ""));
                                 }
                             }
                             if (t != null) OnTurns.this.run(t, args);

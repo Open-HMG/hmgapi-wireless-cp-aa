@@ -59,10 +59,11 @@ JNIEXPORT jstring JNICALL Java_hmgapi_mods_wireless_NaviGraph_nativeBind(JNIEnv 
     return (*env)->NewStringUTF(env, engine.missing ? engine.missing : "bind failed");
 }
 
-/* {status, parcel, link, direction, overpass, underpass, count, count x (parcel, link)} */
+/* {status, parcel, link, direction, overpass, underpass, count, meters along the link, its length,
+ *  count x (parcel, link)} */
 JNIEXPORT jlongArray JNICALL Java_hmgapi_mods_wireless_NaviGraph_nativeCurrent(JNIEnv *env, jclass cls) {
     (void)cls;
-    jlong v[7 + 64]; zero(v, sizeof(v));
+    jlong v[9 + 64]; zero(v, sizeof(v));
     int n = 1;
     if (!bound) v[0] = -20;
     else {
@@ -70,8 +71,9 @@ JNIEXPORT jlongArray JNICALL Java_hmgapi_mods_wireless_NaviGraph_nativeCurrent(J
         v[0] = navigraph_current(&engine, &s);
         if (v[0] == 0) {
             v[1] = (jlong)s.parcel; v[2] = (jlong)s.link; v[3] = s.direction; v[4] = s.overpass; v[5] = s.underpass; v[6] = s.count;
-            for (u32 i = 0; i < s.count; i++) { v[7 + 2 * i] = (jlong)s.edges[i].parcel; v[8 + 2 * i] = (jlong)s.edges[i].link; }
-            n = 7 + 2 * (int)s.count;
+            v[7] = s.pos; v[8] = s.len;
+            for (u32 i = 0; i < s.count; i++) { v[9 + 2 * i] = (jlong)s.edges[i].parcel; v[10 + 2 * i] = (jlong)s.edges[i].link; }
+            n = 9 + 2 * (int)s.count;
         }
     }
     jlongArray r = (*env)->NewLongArray(env, n);

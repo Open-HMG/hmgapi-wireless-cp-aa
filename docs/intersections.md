@@ -127,8 +127,8 @@ bytes, to compare builds across cars.
     alone and logged.
   - once a second, reads the matched link and the node ahead.
   - writes a line to HMG-API's log when the result changes, e.g. `road graph: on a link
-    with 2 onward; node ahead: 3 roads, angles [-90, 0, 90], side streets 0x811`. No
-    coordinates, link ids or names.
+    of 150 m, 40 m along, heading forward, node ahead in 110 m: 3 roads, angles [-90, 0,
+    90], side streets 0x811`. No coordinates, link ids or names.
 
   Nothing goes to the cluster.
 - Tested off the car: `tools/navigraph/test.sh` runs the C against a mock engine (call
@@ -138,20 +138,61 @@ bytes, to compare builds across cars.
 guiding or not:
 - HMG-API's log says "reading the US 260507 (Ioniq 5 NEEV23) engine's road graph".
 - At intersections the lines match the real roads.
+- **The distance to the node ahead counts down as the car drives toward it, and resets at
+  each node.** That checks `GetLinkPos`'s meaning. The engine keeps millimetres and the
+  getter divides by 1000; the mod takes it as counted from the link's first shape point,
+  so heading toward its last point the distance left is length − pos. If the distance
+  counts up instead, that's the wrong way round, and step 2 can't find junctions until
+  `NaviGraph.remaining()` is changed.
 - The navigation keeps working: map, guidance, speed limits and lanes.
 
 If the navigation app crashes or misbehaves, turn the setting off and keep the log.
 
-**Next, once the car confirms step 1:**
-- Ask only near the phone's next maneuver. The phone side (`AaTurns` in GPM, `CpTurns` in
-  DiPO) asks `com.mnsoft.navi` for the junction at its maneuver's distance, and the answer
-  comes back across processes. ch0iiih uses `Settings.Global` with a short lease; a
-  broadcast also works.
-- Port the matcher (`StockMapLookahead`, `StockMapJunction`, later `CompoundJunction`):
-  walk forward to the node at the phone's distance, then accept only an unambiguous
-  match with the phone's maneuver side and angle.
-- Put its side streets in the `TURN` frame, for Android Auto and for CarPlay turns that
-  came without a junction.
+**Step 2: Android Auto's side streets (setting `tbt_map_side_streets`, off by default,
+with `tbt_standard`).** Near a turn, the cluster draws the map's roads around Android
+Auto's arrow.
+- **The question** (`MapJunction`, in GPM). When `AaTurns` sends a `TURN` within the
+  457 m window for a straight, slight, normal or sharp turn, it asks `com.mnsoft.navi` by
+  broadcast: the maneuver's id, the phone's meters to it, and the turn's angle (0, ±45,
+  ±90, ±135, right positive). It asks again at most once a second, or at once for a new
+  maneuver. Ramps, forks, U-turns and roundabouts ask nothing and keep 0.
+- **The walk** (`NaviGraph.find`, after ch0iiih's `StockMapLookahead`):
+  - It starts from the node ahead of the car, the car's remaining meters on its link
+    away.
+  - At each node it goes straight on: the one road within 30° of straight, with any
+    other at least 15° further off. If there's no clear way straight on, it stops.
+  - It stops once past the asked distance. The junction is the node with more than one
+    road on that's nearest the asked distance, within 10% (15 to 40 m). It's refused if
+    another node is within 8 m of as good.
+- **The match** (`NaviGraph.match`, after ch0iiih's `StockMapJunction`):
+  - The turn has to pick out one road: the nearest to the turn's angle, within 60° (22°
+    for straight), 15° nearer than any other, and on the turn's side.
+  - For a plain left or right, it must be the only road on that side.
+  - Two roads in one 22.5° sector, or a node with one road on, give 0.
+  - The answer is the junction's side streets: every road leaving it, the turn's included.
+- **The answer** goes back to GPM. `AaTurns` uses it for the next frames only if it names
+  this maneuver, is under 2.5 s old, and its junction is where the phone's distance says
+  (within the walk's tolerance plus 30 m). Otherwise it sends 0, the plain arrow, as
+  before.
+- **HMG-API's log** gets one line per change in the navigation app, with numbers only:
+  `road graph: junction 300 m, turn 90: matched, side streets 0x811 at 300 m`, or why
+  not, e.g. `... no clear way straight on at 180 m` or `... 2 roads on the turn's side`.
+- **Tested off the car:** `tools/navigraph/test.sh` runs the walk and the match on a
+  made-up map (a T junction, a crossroad, a fork, the refusals), and `MapJunction`'s
+  questions and answers through stand-in broadcasts. `tools/aaturns/test.sh` covers
+  `AaTurns` asking, using and dropping answers.
+
+**On the car**, with `tbt_standard`, `tbt_map_side_streets` (and `navi_road_graph` for the
+step 1 lines) on, Android Auto guiding through city turns:
+- The cluster draws the junction's roads around the arrow near most turns. In the log,
+  `matched` near those turns, and a reason near the others.
+- The AR HUD arrow still animates.
+
+**Not yet:** CarPlay turns that come without a junction. They'd need the same question
+from `CpTurns`, a copy of `MapJunction` in the DiPO part, which can't share classes with
+the main code. Also compound junctions (ch0iiih's `CompoundJunction`: divided roads,
+where one crossing is two nodes) and roundabouts. Those refuse today and keep the plain
+arrow.
 
 ch0iiih's code is AGPL-3.0 like this mod and is credited where it's used. The risk stays
 the same: a wrong constant on a new engine build crashes the car's navigation, so each

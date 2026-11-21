@@ -83,6 +83,18 @@ final class AaTurns {
      * destination icons. The HUD's turn list keeps the projection icons, as the car's does.
      */
     boolean standardTurns;
+    /**
+     * Setting tbt_map_side_streets (with tbt_standard): where the side streets of a TURN come
+     * from, since Android Auto sends no junction shape: the car navigation's map
+     * (MapJunction, answered by NaviGraph in com.mnsoft.navi). null: none, 0 as before.
+     */
+    Junctions junctions;
+    /** a maneuver's side streets: id (turnId), the phone's meters to it, the turn's angle (right positive) -> bits or 0 */
+    interface Junctions {
+        int sides(int id, int meters, int angle);
+    }
+    /** goes up with every new maneuver (event, side or road), so an answer for an old one isn't used */
+    int turnId;
     // destination and the remaining trip
     String destName;
     int estPoint;
@@ -151,6 +163,7 @@ final class AaTurns {
         }
         hudFresh = false;
         boolean first = road == null;
+        if (ev != event || side != turnSide || (str == null ? road != null : !str.equals(road))) turnId++;
         event = ev;
         road = str;
         turnSide = side;
@@ -343,10 +356,29 @@ final class AaTurns {
             // 22.5 degrees): 65535 is a road every way. The car's navigation sends 0 (the
             // phone has no intersection shape either); the icons keep 65535
             if (type < 64) sides = 0;
+            // ...but the car's map has it: the junction's roads around the arrow
+            if (type == TYPE_TURN && junctions != null) {
+                int a = junctionAngle(event, turnSide);
+                if (a != NO_ANGLE) sides = junctions.sides(turnId, meters, a);
+            }
         }
         cluster.tbtInfo(type, sides, dir, distance, 0, 0, unit, bar, barErr);
         sendHudList();
         sendHudDistance();
+    }
+
+    static final int NO_ANGLE = 999;
+
+    /**
+     * The angle a turn takes at its junction, for matching it to the map's roads (degrees,
+     * right positive): straight 0, slight 45, turn 90, sharp 135; NO_ANGLE for anything else
+     * (ramps, forks, U-turns, roundabouts) or a turn with no side.
+     */
+    static int junctionAngle(int ev, int side) {
+        if (ev == STRAIGHT) return 0;
+        int a = ev == SLIGHT_TURN ? 45 : ev == TURN ? 90 : ev == SHARP_TURN ? 135 : NO_ANGLE;
+        if (a == NO_ANGLE) return NO_ANGLE;
+        return side == RIGHT ? a : side == LEFT ? -a : NO_ANGLE;
     }
 
     /**
