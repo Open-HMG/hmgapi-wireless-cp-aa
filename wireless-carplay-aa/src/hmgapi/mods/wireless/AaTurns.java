@@ -151,6 +151,7 @@ final class AaTurns {
         }
         hudFresh = false;
         boolean first = road == null;
+        int was = event;
         event = ev;
         road = str;
         turnSide = side;
@@ -185,7 +186,13 @@ final class AaTurns {
                 setRoundaboutType(ev, turnSide, turnAngle);
                 break;
             case DESTINATION:
-                displayType = 3;
+                // the last maneuver, not the arrival (issue #70: "Arrived" miles out): the
+                // destination icon on its side, as CarPlay's. ARRIVED (3) comes only from
+                // standard(), within 20 m, so a new destination forgets the previous turn's
+                // last distance until Android Auto sends its own (ch0iiih's 0.1.82)
+                if (was != DESTINATION) meters = -1;
+                displayType = side == RIGHT ? DEST_RIGHT : side == LEFT ? DEST_LEFT : DEST_AHEAD;
+                direction = 0;
                 break;
             case UNKNOWN:
                 displayType = 65;   // straight: 64 is the cluster's spinner

@@ -99,6 +99,45 @@ public final class AaTurnsTest {
         expect("same destination: not resent");
         check("destination point kept", t.estPoint == 3);
 
+        // issue #70: Android Auto's destination maneuver is the last turn, not the arrival
+        final int DESTINATION = 19;
+        AaTurns ds = new AaTurns(new android.content.Context(), c, new Handler());
+        ds.status(1);
+        ds.nextTurn("Pine St", RIGHT, TURN, -1, 0);
+        ds.nextTurnDistance(9, 1, 29529, FEET);
+        c.calls.clear();
+        ds.nextTurn("Home", RIGHT, DESTINATION, -1, 0);
+        expect("destination on the right, just after a turn: its icon (113), not ARRIVED (3)",
+                "tbt 113 65535 0.0 29.529 0 0 3 32 0", "hud f201710000" + utf16("Home"), "2c 3 0 29 0 0 0 0 0 0");
+        ds.nextTurnDistance(4828, 300, 3000, MILES_P1);
+        expect("destination 3 mi out: still its icon", "tbt 113 65535 0.0 3.0 0 0 2 32 0", "2c 2 0 3 0 0 0 0 0 0");
+        ds.nextTurnDistance(10, 1, 32808, FEET);
+        expect("destination 10 m out, standard turns off: still its icon (ARRIVED is only the car's own format)",
+                "tbt 113 65535 0.0 32.808 0 0 3 32 0", "2c 3 0 32 0 0 0 0 0 0");
+        ds.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        ds.nextTurn("Home", 0, DESTINATION, -1, 0);
+        expect("destination on the left 114, ahead 112",
+                "tbt 114 65535 0.0 32.808 0 0 3 32 0", "hud f201720000" + utf16("Home"), "2c 3 0 32 0 0 0 0 0 0",
+                "tbt 112 65535 0.0 32.808 0 0 3 32 0", "hud f201700000" + utf16("Home"), "2c 3 0 32 0 0 0 0 0 0");
+        AaTurns da = new AaTurns(new android.content.Context(), c, new Handler());
+        da.standardTurns = true;
+        da.status(1);
+        da.nextTurn("Pine St", RIGHT, TURN, -1, 0);
+        da.nextTurnDistance(9, 1, 29529, FEET);
+        c.calls.clear();
+        da.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        expect("standard turns: a new destination forgets the last turn's 9 m: its icon (114), not ARRIVED",
+                "tbt 114 65535 0.0 29.529 0 0 3 0 0", "hud f201720000" + utf16("Home"), "2c 3 0 29 0 0 0 0 0 0");
+        da.nextTurnDistance(4828, 300, 3000, MILES_P1);
+        expect("standard turns: destination 3 mi out: its icon", "tbt 114 65535 0.0 3.0 0 0 2 0 0", "2c 2 0 3 0 0 0 0 0 0");
+        da.nextTurnDistance(15, 1, 49213, FEET);
+        expect("standard turns: destination within 20 m: ARRIVED (3)", "tbt 3 0 0.0 49.213 0 0 3 0 0", "2c 3 0 49 0 0 0 0 0 0");
+        da.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        expect("standard turns: the same destination again keeps its distance: still ARRIVED",
+                "tbt 3 0 0.0 49.213 0 0 3 0 0", "2c 3 0 49 0 0 0 0 0 0");
+        da.status(2);
+        c.calls.clear();
+
         AaTurns d = new AaTurns(new android.content.Context(), c, new Handler());
         d.status(1);
         d.nextTurn("Start Rd", 0, 1, 0, 0);

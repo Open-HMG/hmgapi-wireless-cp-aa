@@ -38,6 +38,11 @@ main display:
 
 Angles are in 45 degree steps (the engine works in 7.5 degree units: 0, 6, 12 ... 42).
 
+Android Auto's `DESTINATION` maneuver is the last turn of the route, not the arrival: the mod
+sends the destination icon on its side, in both formats. `ARRIVED` goes out only in the car's
+own format, within 20 m, and a new destination maneuver doesn't count the previous turn's last
+distance (issue #70: "Arrived" was shown miles out).
+
 **The distance bar** is `(100 - progress) / 10`, at least 1, where the progress runs
 from the start of the maneuver's guidance to the maneuver. On the drives that start
 was about 457 m (1,500 ft) out: 0.3 mi 9, 900 ft 6, 800 ft 5, 300 ft 2, 30 ft 1. The
