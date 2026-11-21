@@ -105,6 +105,21 @@ final class AaTurns {
     AaNavState.State navState;
     AaNavState.Position navPosition;
     String navLogged;
+    /**
+     * Setting tbt_route_details (off by default): use the full message for what the library's
+     * turn events drop. Keep left/right as the car's fork ("keep") instead of a slight turn; a
+     * clockwise roundabout (left-hand traffic) in the car's clockwise set, also for the newer
+     * enter/exit types the library sends with no side; on-ramps at their real angle near them;
+     * the next charging stop's planned minutes after its name; and the distance counting down
+     * between the phone's updates (about 1 s apart), from the speed its distance and time give.
+     */
+    boolean routeDetails;
+    /** the full message's maneuver (AaNavState.M_*) for the current turn, -1: none or not used */
+    int exactType = -1;
+    /** the roundabout being guided through is clockwise (kept for its ROUNDABOUT_EXIT) */
+    boolean roundaboutCw;
+    /** what went to the cluster's destination name last */
+    String destSent;
 
     AaTurns(Context context, Cluster cluster, Handler handler) {
         this.context = context;
@@ -166,6 +181,7 @@ final class AaTurns {
         turnAngle = angle;
         turnNumber = number;
         if (!isRoundabout(ev)) roundaboutType = -1;
+        exactType = routeDetails ? exactFor(ev) : -1;
         switch (ev) {
             case DEPART:
                 if (first) {
@@ -204,8 +220,65 @@ final class AaTurns {
                 logTurn();
                 return;   // ROUNDABOUT_ENTER, FERRY_TRAIN: not for the cluster
         }
+        applyExact();
         logTurn();
         sendTurn();
+    }
+
+    /**
+     * The full message's maneuver if it is this turn: the library calls back with the dump
+     * (event 33) first, then the turn, for the same 0x8006 (emulated on the US 260507 library),
+     * so navState is the message this turn came from. -1 if it doesn't match.
+     */
+    int exactFor(int ev) {
+        AaNavState.Step st = navState == null ? null : navState.step();
+        if (st == null || st.type < 0) return -1;
+        if (isRoundabout(ev) && AaNavState.isRoundabout(st.type)) return st.type;
+        return AaNavState.legacy(st.type)[0] == ev ? st.type : -1;
+    }
+
+    static boolean keep(int t) {
+        return t == AaNavState.M_KEEP_LEFT || t == AaNavState.M_KEEP_RIGHT;
+    }
+
+    static boolean clockwise(int t) {
+        return t == AaNavState.M_ROUNDABOUT_ENTER_AND_EXIT_CW || t == AaNavState.M_ROUNDABOUT_ENTER_AND_EXIT_CW_WITH_ANGLE
+                || t == AaNavState.M_ROUNDABOUT_ENTER_CW || t == AaNavState.M_ROUNDABOUT_EXIT_CW;
+    }
+
+    /** Refines the projection icon from exactType (tbt_route_details). */
+    void applyExact() {
+        if (exactType < 0) return;
+        if (keep(exactType)) {
+            boolean r = exactType == AaNavState.M_KEEP_RIGHT;
+            displayType = r ? 173 : 174;   // the fork icons, as for FORK
+            direction = 0;
+        } else if (isRoundabout(event)) {
+            if (event != ROUNDABOUT_EXIT) roundaboutCw = clockwise(exactType);
+            boolean cw = clockwise(exactType) || (event == ROUNDABOUT_EXIT && roundaboutCw);
+            if (cw && displayType >= 96 && displayType <= 107) displayType += 96;   // the car's clockwise set, 192-203
+        }
+    }
+
+    /** standard() for the current turn, with exactType's keep and on-ramp angle (tbt_route_details). */
+    int[] standardNow(int m) {
+        boolean k = exactType >= 0 && keep(exactType);
+        int[] n = standard(k ? FORK : event, turnSide, displayType, direction, m);
+        if (exactType >= 0 && event == ON_RAMP && n[0] == TYPE_TURN && (turnSide == LEFT || turnSide == RIGHT)) {
+            boolean r = turnSide == RIGHT;
+            switch (exactType) {
+                case AaNavState.M_ON_RAMP_NORMAL_LEFT: case AaNavState.M_ON_RAMP_NORMAL_RIGHT:
+                    n[1] = r ? 90 : 270;
+                    break;
+                case AaNavState.M_ON_RAMP_SHARP_LEFT: case AaNavState.M_ON_RAMP_SHARP_RIGHT:
+                case AaNavState.M_ON_RAMP_U_TURN_LEFT: case AaNavState.M_ON_RAMP_U_TURN_RIGHT:
+                    n[1] = r ? 135 : 225;
+                    break;
+                default:
+                    break;   // slight: 45 / 315, as standard() has it
+            }
+        }
+        return n;
     }
 
     /**
@@ -216,9 +289,10 @@ final class AaTurns {
      */
     void logTurn() {
         String s = "[wireless-carplay-aa] AA turn: event " + event + " side " + turnSide + " angle " + turnAngle
-                + " number " + turnNumber + " -> type " + displayType + " dir " + direction;
+                + " number " + turnNumber + (exactType >= 0 ? " exact " + exactType : "") + " -> type " + displayType
+                + " dir " + direction;
         if (standardTurns) {
-            int[] n = standard(event, turnSide, displayType, direction, GUIDE_WINDOW);
+            int[] n = standardNow(GUIDE_WINDOW);
             s += ", near: type " + n[0] + " dir " + n[1];
         }
         if (s.equals(lastLog)) return;   // Android Auto sends the same maneuver again about every 1.3 s
@@ -253,7 +327,82 @@ final class AaTurns {
         }
         setDistance(meters, e3, unitFlags);
         setTurnType(event, turnSide);
+        applyExact();
         sendTurn();
+        if (routeDetails) smoothFrom(meters, seconds, unitFlags & 0xff);
+    }
+
+    // ---- the distance between the phone's updates (tbt_route_details)
+
+    /** only this close to the turn (m); how often (ms); how long without an update before it holds (ms) */
+    static final int SMOOTH_MAX_M = 2 * GUIDE_WINDOW;
+    static final long SMOOTH_MS = 500, SMOOTH_STALE_MS = 2500;
+    int smMeters = -1, smUnit;
+    long smAt;
+    float smSpeed;
+    /** host tests set the clock; -1: the real one */
+    static long testNow = -1;
+
+    static long now() {
+        return testNow >= 0 ? testNow : System.nanoTime() / 1000000L;
+    }
+
+    final Runnable smooth = new Runnable() {
+        @Override
+        public void run() {
+            smoothTick();
+        }
+    };
+
+    /** A distance update from the phone: count down from it at the speed its distance and time to the turn give. */
+    void smoothFrom(int m, int seconds, int u) {
+        handler.removeCallbacks(smooth);
+        smMeters = -1;
+        if (m <= 0 || seconds <= 0 || m > SMOOTH_MAX_M) return;
+        float v = m / (float) seconds;
+        if (v < 1f || v > 60f) return;   // stopped, or not a speed
+        smMeters = m;
+        smUnit = u;
+        smSpeed = v;
+        smAt = now();
+        handler.postDelayed(smooth, SMOOTH_MS);
+    }
+
+    void smoothTick() {
+        if (smMeters < 0 || !navLive || rerouteShown) return;
+        long dt = now() - smAt;
+        if (dt > SMOOTH_STALE_MS) return;   // no update from the phone: hold what it said last
+        int est = Math.max(0, Math.round(smMeters - smSpeed * dt / 1000f));
+        float before = distance;
+        int beforeMeters = meters;
+        setDistance(est, e3For(est, smUnit), smUnit);
+        distance = rounded(distance, unit);
+        boolean barMoved = standardTurns && (beforeMeters * 10 / GUIDE_WINDOW) != (est * 10 / GUIDE_WINDOW);
+        if (distance != before || barMoved) {
+            setTurnType(event, turnSide);
+            applyExact();
+            sendTurn();
+        }
+        handler.postDelayed(smooth, SMOOTH_MS);
+    }
+
+    /** the phone's distance value x 1000 (its e3) for m metres in unit u */
+    static int e3For(int m, int u) {
+        switch (u) {
+            case FEET: return m * 3281;
+            case YARDS: return m * 1094;
+            case MILES: case MILES_P1: return m * 1000 / 1609;
+            case KILOMETERS: case KILOMETERS_P1: return m;
+            default: return m * 1000;
+        }
+    }
+
+    /** as the phone shows them: feet and metres in 10s, miles and km in tenths */
+    static float rounded(float d, int clusterUnit) {
+        if (d < 0f) return d;
+        if (clusterUnit == Cluster.UNIT_FT || clusterUnit == Cluster.UNIT_M || clusterUnit == Cluster.UNIT_YD)
+            return Math.round(d / 10f) * 10f;
+        return Math.round(d * 10f) / 10f;
     }
 
     void status(int s) {
@@ -270,6 +419,8 @@ final class AaTurns {
         rerouteShown = false;
         handler.removeCallbacks(rerouteShow);
         handler.removeCallbacks(tick);
+        handler.removeCallbacks(smooth);
+        smMeters = -1;
         destName = null;
         navLive = false;
         tripMeters = -1;
@@ -313,6 +464,9 @@ final class AaTurns {
 
     /** The car's navigation took over (focus native): forget the turn. */
     void stop() {
+        handler.removeCallbacks(smooth);
+        smMeters = -1;
+        exactType = -1;
         event = 0;
         road = null;
         turnSide = 0;
@@ -349,6 +503,7 @@ final class AaTurns {
         if (d == null) return;
         if (d.state != null) {
             navState = d.state;
+            if (routeDetails && destName != null && destName.length() > 0 && !destText().equals(destSent)) sendDestName();
             String s = AaNavState.summary(d);
             if (!s.equals(navLogged)) {
                 navLogged = s;
@@ -369,7 +524,7 @@ final class AaTurns {
             barErr = -2;
             if (displayType < 64) displayType = type = 2;
         } else if (standardTurns) {
-            int[] s = standard(event, turnSide, displayType, direction, meters);
+            int[] s = standardNow(meters);
             type = s[0];
             dir = s[1];
             bar = s[2];
@@ -691,7 +846,22 @@ final class AaTurns {
     }
 
     void sendDestName() {
-        if (destName != null) cluster.destinationName(0, destName);
+        if (destName == null) return;
+        String t = destText();
+        destSent = t;
+        cluster.destinationName(0, t);
+    }
+
+    /**
+     * The destination name; with tbt_route_details, a charging stop's planned minutes after it
+     * ("Electrify America - 24 min charge"), from the full message's first destination.
+     */
+    String destText() {
+        if (!routeDetails || destName == null || destName.length() == 0 || navState == null
+                || navState.destinations.isEmpty()) return destName;
+        AaNavState.Destination d = navState.destinations.get(0);
+        if (!d.station || d.chargeSeconds <= 0) return destName;
+        return destName + " - " + Math.max(1, (d.chargeSeconds + 30) / 60) + " min charge";
     }
 
     // ---- lanes: "nn" lane count, then per lane 8 hex digits (type, then 3 arrow bytes)
