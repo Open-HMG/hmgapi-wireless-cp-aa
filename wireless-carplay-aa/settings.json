@@ -18,6 +18,14 @@
       "description": "Near each maneuver (about 1,500 ft), Android Auto's and CarPlay's turns go to the cluster and HUD as the car's own navigation sends them: turn, U-turn, fork, exit and roundabout types with their angle and the distance bar counting down, which the AR HUD animates; destinations as left, right or ahead; with Android Auto, \"Recalculating...\" during a reroute longer than a second. Off: the projection icons, as before. Checked with Android Auto on a US Ioniq 5 and with CarPlay on a Korean EV6, both with the AR HUD. Takes effect when the head unit restarts."
     },
     {
+      "key": "tbt_route_details",
+      "type": "toggle",
+      "default": false,
+      "title": "Android Auto: route details on the cluster (test)",
+      "apply": "restart",
+      "description": "Uses all of what Android Auto sends for each turn: keep left / right as the car's fork, clockwise roundabouts (left-hand traffic) in the car's clockwise set, on-ramps at their real angle (with \"Turns in the car's own format\"), the next charging stop's planned minutes after its name, and the distance counting down between the phone's updates. Off: as before. Not yet checked on a car. Takes effect when the head unit restarts."
+    },
+    {
       "key": "bridge",
       "type": "toggle",
       "default": true,

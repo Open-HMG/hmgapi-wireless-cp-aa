@@ -283,6 +283,7 @@ public final class Wireless extends ModEntry {
                                     if (c == null) return;
                                     turns.put(receiver, t = new AaTurns(app.context, c, handler));
                                     t.standardTurns = mod.settingBoolean("tbt_standard", false);
+                                    t.routeDetails = mod.settingBoolean("tbt_route_details", false);
                                     mod.log("Android Auto: navigation callback received; cluster bridge created"
                                             + (t.standardTurns ? " (standard turns)" : ""));
                                 }

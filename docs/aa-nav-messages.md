@@ -40,5 +40,12 @@ In emulation, the turn-by-turn library's nav endpoint returns −253 for 0x8008,
 ## The decoder
 
 - **`AaNavState`** (`src/hmgapi/mods/wireless/AaNavState.java`) decodes S and P in full: the exact maneuver and roundabout data, lanes with the recommended flag, every destination with its charging stop, and distances and times. It also has helpers to map a maneuver to the legacy event and side.
-- **`AaTurns`** keeps the latest decode (`navState`, `navPosition`) and logs a summary with no text (`AANAV`) when the step changes. Nothing drawn uses it yet. Drawing from it (exact turn types, time-to-step smoothing, charging-stop text) is the next step and needs a car.
+- **`AaTurns`** keeps the latest decode (`navState`, `navPosition`) and logs a summary with no text (`AANAV`) when the step changes.
+- **Setting `tbt_route_details`** (off by default; a test setting until checked on a car) uses the decode for what the library's events drop. In emulation the library calls back with the dump first, then the turn, for the same message, so the decode always matches the turn it came with:
+  - **Keep left/right:** the library sends a slight turn. With the setting it becomes the fork icon (173/174), and near the turn the car's FORK.
+  - **Clockwise roundabouts** (left-hand traffic): the library marks plain clockwise roundabouts with side RIGHT, but sends no side at all for the newer clockwise enter/exit types. With the setting they use the car's clockwise set (192–203, and 33 near the turn). That includes the plain ROUNDABOUT_EXIT that follows once the car is in the roundabout.
+  - **On-ramps near them** (with `tbt_standard`): TURN at the ramp's real angle (normal 90, sharp or U-turn ramp 135) instead of always 45.
+  - **The next charging stop:** its planned minutes go after its name ("… - 24 min charge"), and are sent again when Maps changes them.
+  - **Distance between updates:** within 914 m of the turn, the distance counts down between the phone's updates (about 1 s apart) at the speed its distance and time give. Feet and metres go in 10s, miles and km in tenths. It holds after 2.5 s with no update.
+- Host tests: `tools/aaturns/test.sh` (`AaRouteDetailsTest`, which feeds the library's callbacks in that order).
 - **`tools/aanav/test.sh`** tests it on synthetic messages shaped like the captures. Given logcat files, it also parses every NAVDUMP line in them and prints only counts. All 1,050 lines of the four captures parsed.
