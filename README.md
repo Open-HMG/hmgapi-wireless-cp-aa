@@ -157,6 +157,9 @@ HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/cpturns/test.sh
 sh wireless-carplay-aa/tools/reattach/test.sh
 ```
 ```
+sh wireless-carplay-aa/tools/aa-text/test.sh
+```
+```
 HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/recipes/test.sh
 
 CLANG=clang LLD=ld.lld QEMU=qemu-system-arm OBJCOPY=llvm-objcopy \
