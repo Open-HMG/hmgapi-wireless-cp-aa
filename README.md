@@ -49,6 +49,7 @@ in-memory patches; disk changes appear in the app's plan.
 | Hyundai Ioniq 6 (`CEEV`) — owner confirmed wireless CarPlay with the CarPlay firewall setting on | USA | 260903 |
 | Hyundai Ioniq 6 (`CEEV`) — owner confirmed wireless CarPlay and turn-by-turn (test build) | Canada | 260903 |
 | Kia Sportage Hybrid (`NQ5HEV`) — not yet tested on the car | USA | 260507 |
+| Kia Niro EV (`SG2EV`) — not yet tested with this mod alone on a car (one owner ran it with a USB Wi-Fi adapter, a separate mod) | USA | 260507 |
 | Hyundai Elantra N (`CN7NPE`) — owner confirmed wireless CarPlay and drive checks | USA | 260903 |
 | Kia K5, Sorento, Stinger, Soul, Seltos 2021, Niro 2020-22, Cadenza, Telluride 2020-21 (and their hybrids) — not yet confirmed on a car (a US K5 is testing); turns on the stock wireless projection and the hotspot | USA | 260507 |
 | Kia K5, Sorento, Stinger, Soul, Seltos 2021, Niro 2020-21, Telluride 2020-21 (and their hybrids) — not yet tested on a car | Canada | 260206 |
