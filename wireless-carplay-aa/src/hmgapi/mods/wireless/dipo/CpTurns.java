@@ -47,6 +47,8 @@ final class CpTurns {
     /** component id -> maneuver index -> maneuver (DiPO e/u.Am) */
     final LinkedHashMap<Integer, LinkedHashMap<Integer, Maneuver>> maneuvers = new LinkedHashMap<Integer, LinkedHashMap<Integer, Maneuver>>();
     String source;
+    /** the last route line logged (logRoute), so an unchanged route isn't logged again */
+    String lastRouteLog;
     /** last HUD list sent (type, next, road), so an unchanged one isn't resent */
     int hudType, hudNext;
     String hudRoad;
@@ -55,7 +57,7 @@ final class CpTurns {
      * navigation sends it (standard()); farther away, and in the HUD's turn list, the icons.
      */
     boolean standardTurns;
-    /** the last maneuver line logged (standard turns only), so a resent maneuver isn't logged again */
+    /** the last maneuver line logged, so a resent maneuver isn't logged again */
     String lastLog;
     /** the car navigation's main-display types (Navigation.DisplayType), as AaTurns sends them */
     static final int TYPE_ARRIVED = 3, TYPE_TURN = 13, TYPE_EXIT_RIGHT = 17, TYPE_EXIT_LEFT = 18, TYPE_FORK = 25,
@@ -281,6 +283,7 @@ final class CpTurns {
             if (s == null || s.length() == 0) continue;
             String was = source;
             source = s;
+            if (was == null) Dipo.log("CarPlay: route guidance source " + s);
             if (was == null || was.equals(s)) return;
             Dipo.log("CarPlay: route guidance source changed from " + was + " to " + s + ", clearing turn-by-turn");
             reset();
@@ -293,6 +296,7 @@ final class CpTurns {
     /** one component's update to the cluster (DiPO e/u.a(Integer, Object), with the build's changes) */
     void turn(Integer id, Update u) {
         if (id < 0 || u == null) return;
+        logRoute(id, u);
         if (u.state == 0) {
             stop();
             return;
@@ -321,6 +325,7 @@ final class CpTurns {
             default: unit = Cluster.UNIT_M; break;
         }
         int icon = icon(x.type, x.side, x.junction, x.exit, u.state);
+        logTurn(x, icon);
         // StartRoute has no direction: clear the previous app's HUD arrow.
         if (x.type == 11 && icon == 1) hudBlank();
         cluster.crossroadName(x.afterRoad);
@@ -333,7 +338,6 @@ final class CpTurns {
             type = s[0];
             dir = s[1];
             bar = s[2];
-            logTurn(x, icon);
         }
         cluster.tbtInfo(type, 0, dir, dist, 0, 0, unit, bar, 0);
         sendHud(icon, id, u);
@@ -419,16 +423,43 @@ final class CpTurns {
     }
 
     /**
-     * One line per maneuver in HMG-API's log with standard turns on: the iAP2 maneuver, its icon
-     * and what goes out near it. Numbers only, no road names; the phone resends a maneuver
-     * field by field, so a line equal to the last one isn't logged again.
+     * One line per maneuver in HMG-API's log: the iAP2 maneuver and its icon (0: nothing goes
+     * to the cluster for it), and with standard turns what goes out near it. Numbers only, no
+     * road names; the phone resends a maneuver field by field, so a line equal to the last one
+     * isn't logged again. Issue #24: with Google Maps nothing reached the cluster, and the log
+     * couldn't say whether its maneuvers had no icon or never came.
      */
     void logTurn(Maneuver x, int icon) {
-        int[] n = standard(x.type, x.side, x.junction, x.exit, icon, GUIDE_WINDOW);
         String s = "CarPlay turn: type " + x.type + " side " + x.side + " junction " + x.junction + " exit " + x.exit
-                + " -> icon " + icon + ", near: type " + n[0] + " dir " + n[1];
+                + " -> icon " + icon;
+        if (standardTurns) {
+            int[] n = standard(x.type, x.side, x.junction, x.exit, icon, GUIDE_WINDOW);
+            s += ", near: type " + n[0] + " dir " + n[1];
+        }
         if (s.equals(lastLog)) return;
         lastLog = s;
+        Dipo.log(s);
+    }
+
+    /**
+     * One line when a component's route changes: its state (RouteGuidanceState: 0 none, 1
+     * active, 2 arrived, 3 loading, 4 locating, 5 rerouting, 6 proceed to route), the
+     * current maneuver's index, whether its details have come, how many maneuvers the list
+     * has, and whether the phone sent a distance to it. Numbers only.
+     */
+    void logRoute(Integer id, Update u) {
+        int[] list = u.list;
+        LinkedHashMap<Integer, Maneuver> m = maneuvers.get(id);
+        String now;
+        if (list == null || list.length == 0) {
+            now = "no maneuver";
+        } else {
+            now = "maneuver " + list[0] + (m != null && m.get(list[0]) != null ? "" : " (no details yet)") + " of " + list.length;
+        }
+        String s = "CarPlay route: component " + id + " state " + u.state + ", " + now + ", distance "
+                + (u.nextStr == null || u.nextStr.length() == 0 ? "none" : "sent");
+        if (s.equals(lastRouteLog)) return;
+        lastRouteLog = s;
         Dipo.log(s);
     }
 

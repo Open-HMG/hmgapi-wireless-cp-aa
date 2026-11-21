@@ -71,6 +71,39 @@ public final class CpTurnsTest {
                 8, ENUM, i(side), 9, ENUM, i(junction), 11, U8, i(exit));
     }
 
+    /**
+     * HMG-API's log, with standard turns off (issue #24): the source, each route change and
+     * each maneuver with its icon, 0 included, so a Car Report shows whether a navigation
+     * app's maneuvers came and why nothing reached the cluster. Numbers and the app's name
+     * only, no road names; nothing repeated.
+     */
+    static void routeLogs() {
+        c = new Cluster();
+        CpTurns t = new CpTurns(new android.content.Context(), c, null);
+        Dipo.lines.clear();
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 11, STR, s("0.5"), 12, ENUM, i(1), 13, U16, i(0, 1), 19, STR, s("Google Maps")));
+        t.maneuver(maneuver(0, 1, 0, 0, -87, "Secret Rd", 800));
+        t.routeGuidance(msg(0, U16, i(1), 11, STR, s("0.4")));
+        t.routeGuidance(msg(0, U16, i(1), 11, STR, s("0.3")));
+        t.maneuver(maneuver(1, 2, 0, 0, 90, "Other Rd", 900));
+        t.routeGuidance(msg(0, U16, i(1), 11, STR, s("0.1"), 13, U16, i(1)));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(0)));
+        String want = String.join("\n",
+                "CarPlay: route guidance source Google Maps",
+                "CarPlay route: component 1 state 1, maneuver 0 (no details yet) of 2, distance sent",
+                "CarPlay route: component 1 state 1, maneuver 0 of 2, distance sent",
+                "CarPlay turn: type 1 side 0 junction 0 exit -87 -> icon 0",
+                "CarPlay route: component 1 state 1, maneuver 1 of 1, distance sent",
+                "CarPlay turn: type 2 side 0 junction 0 exit 90 -> icon 67",
+                "CarPlay: hud list type 67 next 0",
+                "CarPlay route: component 1 state 0, maneuver 1 of 1, distance sent");
+        String got = String.join("\n", Dipo.lines);
+        check("log: source, route changes and every maneuver with its icon (0 too), once each, no road names"
+                + (got.equals(want) ? "" : "\n  wanted:\n    " + want.replace("\n", "\n    ") + "\n  got:\n    " + got.replace("\n", "\n    ")),
+                got.equals(want) && !got.contains("Rd"));
+        Dipo.lines.clear();
+    }
+
     /** Public, synthetic fixtures for the ordinary turns observed on India 260430.
      * No car dumps or private route strings are needed for this regression. */
     static void indiaTurns() {
@@ -234,6 +267,7 @@ public final class CpTurnsTest {
         check("lane angles: 0 straight, 90 right, -45 slight left, 180 back",
                 CpTurns.laneIcon(0) == 1 && CpTurns.laneIcon(90) == 3 && CpTurns.laneIcon(-45) == 8 && CpTurns.laneIcon(180) == 5
                         && CpTurns.laneIcon(270) == 7);
+        routeLogs();
         indiaTurns();
         standardTurns();
         System.exit(fail);

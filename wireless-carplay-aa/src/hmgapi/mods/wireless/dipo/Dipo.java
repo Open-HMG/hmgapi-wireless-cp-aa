@@ -153,6 +153,8 @@ public final class Dipo {
             @Override
             protected void beforeHookedMethod(Param p) {
                 if (OWN.get() != null) return;
+                // logged every time (issue #24): a stop mid-route ends the phone's updates
+                log("CarPlay: DiPO stopped route guidance");
                 RgWatch w = rgWatch;
                 if (w != null) w.stopped();
                 post(new Runnable() {
