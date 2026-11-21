@@ -463,6 +463,12 @@ final class CpTurns {
             case 5:
             case 9:
                 return side == 0 && junction == 0 && exit == 0 ? 172 : 0;
+            // enter / exit a roundabout: the exit's icon from its angle, with or without the
+            // junction flag (Kakao Navi sends neither); straight (65) with no angle, so the
+            // text and distance stay live (it showed nothing). ch0iiih's 0.1.58
+            case 6:
+            case 7:
+                return exit == 0 ? 65 : roundaboutIcon(exit);
             case 12: {   // arrive; state 2 (arrived): 3
                 int i = side == 0 && junction == 0 ? 112 : 0;
                 return state == 2 ? 3 : i;
@@ -487,16 +493,16 @@ final class CpTurns {
             case 33: return side == 0 && junction == 1 && exit == -90 ? 105 : 0;
             case 34: return side == 0 && junction == 1 && exit == -135 ? 104 : 0;
             case 35: return side == 0 && junction == 1 && exit == -180 ? 102 : 0;
+            // sharp and slight turns: the type says which; an exit angle other than the
+            // build's exact ones showed nothing (sharp left at -130, say)
             case 47:
-                if (junction == 0 && exit <= -135 && exit >= -150) return 69;
                 if (junction == 0 && exit == -30) return 71;
-                return 0;
+                return junction == 0 ? 69 : 0;
             case 48:
                 if (junction == 0 && exit == 30) return 66;
-                if (junction == 0 && exit >= 135 && exit <= 150) return 68;
-                return 0;
-            case 49: return junction == 0 && exit == -45 ? 71 : 0;
-            case 50: return junction == 0 && exit == 45 ? 66 : 0;
+                return junction == 0 ? 68 : 0;
+            case 49: return junction == 0 ? 71 : 0;
+            case 50: return junction == 0 ? 66 : 0;
             case 52: return (side == 0 || side == 1) && junction == 0 ? 174 : 0;
             case 53: return (side == 0 || side == 1) && junction == 0 ? 173 : 0;
             default: return 0;
@@ -610,7 +616,7 @@ final class CpTurns {
         }
     }
 
-    /** an upcoming turn's small icon (HUD list and turn list): 64 none, 65 straight, 66-68 right, 69-71 left, 72/73 U-turn */
+    /** an upcoming turn's icon (HUD list and turn list): 65 straight, 66-68 right, 69-71 left, 72/73 U-turn, the rest as icon() */
     static int aheadIcon(int type, int side, int junction, int exit) {
         if (type == 1) {
             if (exit == -120 && junction == 0) return 69;
@@ -626,7 +632,23 @@ final class CpTurns {
         }
         if (type == 3) return 65;
         if (type == 4) return side == 0 ? 72 : 73;
-        return 64;
+        // the rest as the turn itself (slight, sharp, end of the road, keep left/right, ramps,
+        // roundabouts, destinations); straight (65) without one. Never 64: the cluster draws
+        // its loading spinner for it, in the turn list and the HUD list (AaTurns.aheadType).
+        // ch0iiih's 0.1.58
+        int i = icon(type, side, junction, exit, 1);
+        return i >= 64 ? i : 65;
+    }
+
+    /**
+     * A roundabout exit's icon from its angle (degrees, right positive), one per 45 degrees
+     * as roundaboutDir() pairs them: 96 straight on, 97, 99 right, 100, 102 back, 104, 105
+     * left, 107.
+     */
+    static int roundaboutIcon(int exit) {
+        int a = ((exit % 360) + 360) % 360;
+        int[] icons = { 96, 97, 99, 100, 102, 104, 105, 107 };
+        return icons[(a + 22) / 45 % 8];
     }
 
     /** the HUD's list frame (0xF2): count, this icon, the next turn's icon, 0, road after this turn (UTF-16LE) */

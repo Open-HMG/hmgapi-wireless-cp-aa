@@ -61,6 +61,18 @@ was sent for them. [Evergreen](https://github.com/KSubedi/gen5w-Evergreen)'s Car
 builds (1.2.0.104 to 1.2.0.112, notes/carplay-ar.md) found this on a US EV6 (260507) with
 Apple Maps: its highway exits came as 8 with no exit angle, and keep left / right as 13 / 14.
 
+From [ch0iiih's Phone Projection TBT](https://github.com/ch0iiih/HMG_Phone_Projection_TBT)
+(0.1.58, from captured Kakao Navi drives):
+
+- **6 / 7 enter / exit a roundabout** get the roundabout icon for their exit angle (with or
+  without the junction flag), and straight (65) with no angle, so the text and distance stay
+  up. Before, they showed nothing.
+- **47-50 sharp / slight turns** get their icon whatever the exit angle; only the build's
+  exact angles (-45 for a slight left, say) had one.
+- **The upcoming turn** (the HUD list's second icon, the cluster's turn list) gets the same
+  icon as the turn itself, and straight (65) where there is none. Before, everything but
+  plain turns, straight and U-turns went out as 64, the cluster's loading spinner.
+
 Two more of its findings, in both formats:
 
 - **The previous turn is cleared** when the phone's current maneuver changes to one with no
@@ -77,7 +89,7 @@ Two more of its findings, in both formats:
 **Checked on a car:** a Korean EV6 (CVEV.KOR, 260902) with the AR HUD, November 2026, by hwjang1, with Naver Map and T map on wireless CarPlay.
 - Right, left, slight left and U-turns animated as the car's own navigation's do.
 - The Korean firmware's `Navigation.DisplayType` values are the same.
-- The owner's build also gives icons to the exit-angle-less slight turn (49) these apps send. Here it only goes out when an icon does.
+- The owner's build also gives icons to the exit-angle-less slight turn (49) these apps send. It has one here too now (above).
 - Not yet seen on a drive: forks, highway exits, roundabouts and arrival.
 
 ### Planned: the arrow gliding with the exact distance
