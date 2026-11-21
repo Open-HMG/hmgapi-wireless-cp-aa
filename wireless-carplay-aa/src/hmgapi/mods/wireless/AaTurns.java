@@ -97,6 +97,14 @@ final class AaTurns {
     final int[] aheadEv = new int[3], aheadSide = new int[3], aheadAng = new int[3], aheadExit = new int[3];
     final int[] aheadMeters = new int[3], aheadUnit = new int[3], aheadE3 = new int[3];
     final boolean[] aheadOk = new boolean[3];
+    /**
+     * The last full 0x8006 / 0x8007 as AaNavState decoded them from the dump (null until one
+     * comes): the exact maneuver (0..50), lanes, cue, time to step, every destination. Kept and
+     * logged (AANAV, no text) only; nothing drawn uses them yet.
+     */
+    AaNavState.State navState;
+    AaNavState.Position navPosition;
+    String navLogged;
 
     AaTurns(Context context, Cluster cluster, Handler handler) {
         this.context = context;
@@ -110,6 +118,7 @@ final class AaTurns {
         if (ev == EV_DUMP) {
             Log.d("NAVDUMP", String.valueOf(str));
             hmgapi.hook.ProjectionHooks.navigationDump(str);   // to mods that asked for projection events (EGMP's route data)
+            navDump(str);
             return;
         }
         if (ev == EV_LANES) {
@@ -323,6 +332,31 @@ final class AaTurns {
     void end() {
         handler.removeCallbacks(tick);
         if (navLive) status(2);
+        navState = null;
+        navPosition = null;
+        navLogged = null;
+    }
+
+    /** Decodes the full message in a dump and keeps it; logs a text-free summary when the S summary changes. */
+    void navDump(String str) {
+        AaNavState.Dump d;
+        try {
+            d = AaNavState.parse(str);
+        } catch (AaNavState.ParseException e) {
+            Log.d("AANAV", "bad dump: " + e.getMessage());
+            return;
+        }
+        if (d == null) return;
+        if (d.state != null) {
+            navState = d.state;
+            String s = AaNavState.summary(d);
+            if (!s.equals(navLogged)) {
+                navLogged = s;
+                Log.d("AANAV", s);
+            }
+        } else {
+            navPosition = d.position;
+        }
     }
 
     // ---- the next turn

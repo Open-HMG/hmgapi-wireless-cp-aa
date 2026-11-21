@@ -151,6 +151,9 @@ HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/test.sh
 HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/aaturns/test.sh
 ```
 ```
+sh wireless-carplay-aa/tools/aanav/test.sh
+```
+```
 HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/cpturns/test.sh
 ```
 ```
