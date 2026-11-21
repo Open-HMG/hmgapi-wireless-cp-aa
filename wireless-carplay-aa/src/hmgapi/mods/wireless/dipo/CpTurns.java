@@ -55,6 +55,12 @@ final class CpTurns {
      * navigation sends it (standard()); farther away, and in the HUD's turn list, the icons.
      */
     boolean standardTurns;
+    /**
+     * Setting tbt_side_streets (with tbt_standard): a TURN near a maneuver carries the side
+     * streets of the iPhone's junction (sideStreets()), so the cluster draws the intersection
+     * around the arrow as the car's own navigation does in Korea. Off: 0, no roads drawn.
+     */
+    boolean sideStreets;
     /** the last maneuver line logged (standard turns only), so a resent maneuver isn't logged again */
     String lastLog;
     /**
@@ -370,7 +376,7 @@ final class CpTurns {
         shownId = id;
         shownIndex = list[0];
         shownType = x.type;
-        int type = icon, dir = 0, bar = 0;
+        int type = icon, dir = 0, bar = 0, sides = 0;
         if (standardTurns) {
             // the phone's distance to this maneuver in meters (item 10), once it has sent one
             int meters = u.nextStr == null || u.nextStr.equals("") ? -1 : u.distNext;
@@ -378,9 +384,10 @@ final class CpTurns {
             type = s[0];
             dir = s[1];
             bar = s[2];
+            if (sideStreets && type == TYPE_TURN) sides = sideStreets(x.type, x.junction, x.exitSent, x.exit, x.angles);
             logTurn(x, icon);
         }
-        cluster.tbtInfo(type, 0, dir, dist, 0, 0, unit, bar, 0);
+        cluster.tbtInfo(type, sides, dir, dist, 0, 0, unit, bar, 0);
         sendHud(icon, id, u);
         sendHudDist(dist, unit);
         sendTrip(u);
@@ -510,8 +517,13 @@ final class CpTurns {
      */
     void logTurn(Maneuver x, int icon) {
         int[] n = standard(x.type, x.side, x.junction, x.exit, icon, GUIDE_WINDOW);
-        String s = "CarPlay turn: type " + x.type + " side " + x.side + " junction " + x.junction + " exit " + x.exit
-                + " -> icon " + icon + ", near: type " + n[0] + " dir " + n[1];
+        // the junction's angles are logged whether side streets are on or not: which apps send them
+        String s = "CarPlay turn: type " + x.type + " side " + x.side + " junction " + x.junction
+                + " exit " + (x.exitSent ? String.valueOf(x.exit) : "none")
+                + " angles " + (x.angles == null ? "none" : java.util.Arrays.toString(x.angles))
+                + " -> icon " + icon + ", near: type " + n[0] + " dir " + n[1]
+                + (n[0] == TYPE_TURN ? " sides 0x" + Integer.toHexString(sideStreets(x.type, x.junction, x.exitSent, x.exit, x.angles))
+                        + (sideStreets ? "" : " (off)") : "");
         if (s.equals(lastLog)) return;
         lastLog = s;
         Dipo.log(s);
@@ -574,6 +586,51 @@ final class CpTurns {
             default:           // on-ramps, ferries: the icon, with the bar
                 return new int[] { icon, 0, bar };
         }
+    }
+
+    /**
+     * The side streets (updateTBTInfo's 16-bit sideStreet) for a TURN at an intersection, from
+     * the iPhone's junction: one bit per road leaving it, the exit included, as the car's own
+     * navigation sets them (libExSLNavi SetSideStreetBit; Korean cars' 4-way crossroad is 0x811:
+     * ahead, right, left). 0 (no roads drawn) unless every part is there and agrees: an
+     * intersection (junction 0), an exit angle this update carried on the maneuver's side
+     * (|exit| <= 22 going straight), and junction angles all in -180..180.
+     * type: iAP2 ManeuverType (1/20/47/49 left, 2/21/48/50 right, 3 straight); exit and angles
+     * in degrees, right positive.
+     * Sector algorithm after ch0iiih/HMG_Phone_Projection_TBT PhoneJunction (AGPL-3.0), itself
+     * adapted from BeegSchmooze/Lambda-Carplay-AA-Bridge LeafiaCpTurn (GPL-3.0).
+     */
+    static int sideStreets(int type, int junction, boolean exitSent, int exit, int[] angles) {
+        if (junction != 0 || !exitSent || angles == null || angles.length == 0 || exit < -180 || exit > 180) return 0;
+        boolean left = type == 1 || type == 20 || type == 47 || type == 49;
+        boolean right = type == 2 || type == 21 || type == 48 || type == 50;
+        if (left ? exit >= 0 : right ? exit <= 0 : type != 3 || Math.abs(exit) > 22) return 0;
+        int roads = roadBit(exit);
+        for (int a : angles) {
+            if (a < -180 || a > 180) return 0;
+            roads |= roadBit(a);
+        }
+        return roads;
+    }
+
+    /**
+     * A road's side-street bit, from its angle (degrees clockwise from straight ahead): bit 0
+     * ahead (within 12 degrees), bits 1-7 the right side and 8-14 the left in 22.5 degree
+     * sectors from 12 and 192 degrees, none for the road behind (169-192, the one we come in on).
+     */
+    static int roadBit(int angle) {
+        int cw = ((angle % 360) + 360) % 360;
+        if (cw < 12 || cw > 348) return 1;
+        int lo = 12, bit = 1;
+        for (int k = 0; k < 15; k++) {
+            int hi = lo + (k % 2 == 0 ? 22 : 23);
+            if (k != 7) {
+                if (cw >= lo && cw < hi) return 1 << bit;
+                bit++;
+            }
+            lo = hi;
+        }
+        return 0;
     }
 
     /**
@@ -936,6 +993,8 @@ final class CpTurns {
         int index, type, distance, distUnits, side, junction, exit, linkedLane;
         String description, afterRoad, distStr;
         int[] angles;
+        /** this update carried JunctionElementExitAngle (item 11): exit 0 is then straight on, not absent */
+        boolean exitSent;
 
         Maneuver(int index, int id, Iap2NotiMsg msg) {
             if (msg == null) return;
@@ -955,6 +1014,7 @@ final class CpTurns {
             junction = 0;
             angles = null;
             exit = 0;
+            exitSent = false;
             linkedLane = 0;
         }
 
@@ -963,6 +1023,7 @@ final class CpTurns {
             Iap2NotiMsg.Iap2ObjGroup g = msg.getItemGroup();
             this.index = index;
             exit = 0;
+            exitSent = false;
             for (int k = 0; k < g.getItemCnt(); k++) {
                 Iap2NotiMsg.Iap2ObjItem it = g.getObjItem(k);
                 int item = it.getItemId(), n = it.getItemObjCount();
@@ -978,6 +1039,7 @@ final class CpTurns {
                             }
                         } else if (item == 11 && v != null) {
                             exit = v[0];
+                            exitSent = true;
                         }
                         break;
                     }

@@ -237,6 +237,7 @@ public final class CpTurnsTest {
         indiaTurns();
         standardTurns();
         evergreenFixes();
+        sideStreets();
         System.exit(fail);
     }
 
@@ -371,5 +372,68 @@ public final class CpTurnsTest {
         check("roundaboutDir: the clockwise set (+96), and -1 for 103, 106 and turn icons",
                 CpTurns.roundaboutDir(195) == 90 && CpTurns.roundaboutDir(103) == -1 && CpTurns.roundaboutDir(106) == -1
                         && CpTurns.roundaboutDir(67) == -1);
+    }
+
+    /** a RouteGuidanceManeuverUpdate for component 1 with the junction's angles (item 10); exit null: no item 11 */
+    static Iap2NotiMsg junction(int index, int type, Integer exit, int[] angles, String after) {
+        Iap2NotiMsg m = msg(0, U16, i(1), 1, U16, i(index), 3, ENUM, i(type), 4, STR, s(after), 8, ENUM, i(0), 9, ENUM, i(0));
+        if (angles != null) m.getItemGroup().add(10, U8, angles);
+        if (exit != null) m.getItemGroup().add(11, U8, i(exit));
+        return m;
+    }
+
+    /** setting tbt_side_streets: the iPhone's junction as the cluster's side streets */
+    static void sideStreets() {
+        check("roadBit: ahead within 12, right 90 bit 4, left 270 bit 11, behind none, sector edges",
+                CpTurns.roadBit(0) == 1 && CpTurns.roadBit(11) == 1 && CpTurns.roadBit(-11) == 1 && CpTurns.roadBit(12) == 2
+                        && CpTurns.roadBit(90) == 1 << 4 && CpTurns.roadBit(-90) == 1 << 11 && CpTurns.roadBit(270) == 1 << 11
+                        && CpTurns.roadBit(180) == 0 && CpTurns.roadBit(-180) == 0 && CpTurns.roadBit(170) == 0
+                        && CpTurns.roadBit(168) == 1 << 7 && CpTurns.roadBit(192) == 1 << 8 && CpTurns.roadBit(-12) == 1 << 14);
+        check("a 4-way crossroad, right turn: 0x811 (ahead, right, left; Korean cars' own navigation)",
+                CpTurns.sideStreets(2, 0, true, 90, i(0, 90, -90, 180)) == 0x811);
+        check("a T junction, left turn: the left road and the road ahead, the exit included",
+                CpTurns.sideStreets(1, 0, true, -90, i(0, -90)) == (1 | 1 << 11));
+        check("slight right with a road ahead and a sharp left",
+                CpTurns.sideStreets(50, 0, true, 45, i(0, 45, -135)) == (1 | 1 << 2 | 1 << 9));
+        check("straight through a crossroad (exit within 22 degrees)",
+                CpTurns.sideStreets(3, 0, true, 5, i(5, 90, -90)) == 0x811);
+        check("no junction angles, no exit angle in this update, a roundabout: 0",
+                CpTurns.sideStreets(2, 0, true, 90, null) == 0 && CpTurns.sideStreets(2, 0, true, 90, new int[0]) == 0
+                        && CpTurns.sideStreets(2, 0, false, 0, i(0, 90)) == 0 && CpTurns.sideStreets(2, 1, true, 90, i(0, 90)) == 0);
+        check("an exit on the wrong side, straight with a turning exit, an angle out of range, other types: 0",
+                CpTurns.sideStreets(2, 0, true, -90, i(0, -90)) == 0 && CpTurns.sideStreets(1, 0, true, 0, i(0, 90)) == 0
+                        && CpTurns.sideStreets(3, 0, true, 45, i(0, 45)) == 0 && CpTurns.sideStreets(2, 0, true, 90, i(0, 200)) == 0
+                        && CpTurns.sideStreets(4, 0, true, 180, i(0, 180)) == 0 && CpTurns.sideStreets(23, 0, true, 30, i(0, 30)) == 0);
+
+        // a drive: standard turns with side streets on
+        c = new Cluster();
+        CpTurns t = new CpTurns(new android.content.Context(), c, null);
+        t.standardTurns = true;
+        t.sideStreets = true;
+        t.maneuver(junction(0, 2, 90, i(0, 90, -90, 180), "Main St"));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 10, U32, i(900), 11, STR, s("900"), 12, ENUM, i(2), 13, U16, i(0)));
+        expect("side streets: 900 m out it's the icon, no side streets",
+                "road [Main St]", "tbt 67 0 0.0 900.0 0 0 0 0 0",
+                "hud f201430000" + utf16("Main St"), "2c 0 0 900 0 0 0 0 0 0");
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(300), 11, STR, s("300")));
+        expect("side streets: 300 m out, TURN 90 with the crossroad's side streets (0x811 = 2065)",
+                "road [Main St]", "tbt 13 2065 90.0 300.0 0 0 0 60 0", "2c 0 0 300 0 0 0 0 0 0");
+        t.maneuver(junction(0, 2, null, i(0, 90, -90, 180), "Main St"));
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(250), 11, STR, s("250")));
+        expect("side streets: an update without the exit angle draws the plain turn",
+                "road [Main St]", "tbt 13 0 90.0 250.0 0 0 0 50 0", "2c 0 0 250 0 0 0 0 0 0");
+        t.maneuver(junction(1, 1, -90, null, "Oak Ave"));
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(200), 11, STR, s("200"), 13, U16, i(1)));
+        expect("side streets: a turn without junction angles (Google Maps) draws the plain turn",
+                "road [Oak Ave]", "tbt 13 0 270.0 200.0 0 0 0 40 0",
+                "hud f201460000" + utf16("Oak Ave"), "2c 0 0 200 0 0 0 0 0 0");
+
+        c = new Cluster();
+        t = new CpTurns(new android.content.Context(), c, null);
+        t.standardTurns = true;
+        t.maneuver(junction(0, 2, 90, i(0, 90, -90, 180), "Main St"));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 10, U32, i(300), 11, STR, s("300"), 12, ENUM, i(2), 13, U16, i(0)));
+        check("side streets off (the default): standard turns send 0: " + c.calls, c.calls.contains("tbt 13 0 90.0 300.0 0 0 0 60 0"));
+        check("side streets: off by default", !new CpTurns(new android.content.Context(), new Cluster(), null).sideStreets);
     }
 }

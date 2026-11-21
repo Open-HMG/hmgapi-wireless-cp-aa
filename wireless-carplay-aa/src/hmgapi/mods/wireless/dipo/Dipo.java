@@ -147,7 +147,9 @@ public final class Dipo {
             }
         });
         turns.standardTurns = mod.settingBoolean("tbt_standard", false);
-        if (turns.standardTurns) log("CarPlay: turns in the car's own format near a maneuver (standard turns)");
+        turns.sideStreets = turns.standardTurns && mod.settingBoolean("tbt_side_streets", false);
+        if (turns.standardTurns) log("CarPlay: turns in the car's own format near a maneuver (standard turns)"
+                + (turns.sideStreets ? ", with the iPhone's side streets" : ""));
         rg = new RgListener();
         mod.hook(app.classLoader, "dipo.iap2_proxy.stop_route_guidance", new MethodHook() {
             @Override
