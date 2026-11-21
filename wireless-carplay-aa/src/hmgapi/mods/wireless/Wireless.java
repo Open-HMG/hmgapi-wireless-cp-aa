@@ -101,11 +101,13 @@ public final class Wireless extends ModEntry {
     public void appLoaded(final ModContext mod, LoadedApp app) {
         if (NAVIGATION.equals(app.packageName)) navigation(mod, app);
         if (IAP2.equals(app.packageName)) iap2(mod, app);
-        if (GPM.equals(app.packageName) && mod.settingBoolean("usb_drives", true)) usbDrives(mod, app);
+        if (FocusPolicy.PKG_BTAUDIO.equals(app.packageName) && mod.settingBoolean("projection_focus", false)) FocusGuard.btAudio(mod, app);
+        if (GPM.equals(app.packageName) && (mod.settingBoolean("usb_drives", true) || mod.settingBoolean("projection_focus", false))) usbDrives(mod, app);
+        if (GPM.equals(app.packageName) && mod.settingBoolean("projection_focus", false)) FocusGuard.gpm(mod, app);
         if (GPM.equals(app.packageName) && mod.settingBoolean("tbt", true)) gpmTurnByTurn(mod, app);
         if (BTSETTINGS.equals(app.packageName) && mod.settingBoolean("menu", true)) phoneProjectionMenu(mod, app);
         if (SYSTEM_POPUP.equals(app.packageName) && mod.settingBoolean("menu", true)) popupSettings(mod, app);
-        if (DIPO.equals(app.packageName) && (mod.settingBoolean("tbt", true) || mod.settingBoolean("bridge", true) || mod.settingBoolean("audio", true))) dipo(mod, app);
+        if (DIPO.equals(app.packageName) && (mod.settingBoolean("tbt", true) || mod.settingBoolean("bridge", true) || mod.settingBoolean("audio", true) || mod.settingBoolean("projection_focus", false))) dipo(mod, app);
     }
 
     /**
@@ -348,20 +350,28 @@ public final class Wireless extends ModEntry {
         });
     }
 
-    private void usbDrives(final ModContext mod, LoadedApp app) {
+    private void usbDrives(final ModContext mod, final LoadedApp app) {
         mod.hook(null, "framework.context_impl.start_service", new MethodHook() {
             @Override
             protected void beforeHookedMethod(Param p) {
                 Intent i = (Intent) p.args[0];
                 ComponentName c = i == null ? null : i.getComponent();
-                if (c == null || !GAL_SERVICE.equals(c.getClassName()) || i.getIntExtra("startMode", -1) != 1) return;
-                UsbDevice d = i.getParcelableExtra("device");
-                if (!notPhone(d)) return;
-                p.setResult(null);
-                mod.log("USB drive or hub (" + d.getDeviceName() + "), not starting wired Android Auto");
+                if (c == null || !GAL_SERVICE.equals(c.getClassName())) return;
+                int startMode = i.getIntExtra("startMode", -1);
+                if (startMode == 1 && mod.settingBoolean("usb_drives", true)) {
+                    UsbDevice d = i.getParcelableExtra("device");
+                    if (notPhone(d)) {
+                        p.setResult(null);
+                        mod.log("USB drive or hub (" + d.getDeviceName() + "), not starting wired Android Auto");
+                        return;
+                    }
+                }
+                if (startMode > 0 && mod.settingBoolean("projection_focus", false)) {
+                    FocusGuard.onAaConnecting(mod, app.context);
+                }
             }
         });
-        mod.log("USB drive hook in " + app.processName);
+        if (mod.settingBoolean("usb_drives", true)) mod.log("USB drive hook in " + app.processName);
     }
 
     /** true when the device has interfaces and every one is mass storage or a hub */

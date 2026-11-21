@@ -14,7 +14,7 @@ released from this repository.
 ## What it does
 
 Each part is a setting in the HMG-API app (pick the mod in its list for its settings).
-The firewall workarounds are off by default; the other settings below are on:
+The firewall workarounds and startup focus guard are off by default; the other settings below are on:
 
 | Setting | What |
 |---|---|
@@ -27,6 +27,7 @@ The firewall workarounds are off by default; the other settings below are on:
 | USB drives and hubs don't start wired Android Auto | A hook in the Android Auto app: a USB stick no longer blocks wireless Android Auto |
 | Allow wireless Android Auto through the hotspot firewall | **Off by default.** Experimental Ioniq 6 workaround: new IPv4 TCP connections on hotspot port 40515 |
 | Allow wireless CarPlay through the hotspot firewall | **Off by default.** Needed on the US Ioniq 6 260507 and the Elantra N (`CN7NPE`) 260903: CarPlay's ports (TCP and UDP, both ways), mDNS and ICMPv6 from the hotspot |
+| Keep Phone Projection in focus when Bluetooth Audio competes at startup | **Off by default.** Hooks in Bluetooth Audio, CarPlay and Android Auto: yields Bluetooth Audio only during the startup/connect handoff (leaving manual Bluetooth Audio selection, passenger Bluetooth streaming, radio and camera views untouched) |
 
 HMG-API backs up modified files and restores their original bytes when the mod is
 removed. Native recipes verify the bytes at each patch site. The Ioniq 6 feature
