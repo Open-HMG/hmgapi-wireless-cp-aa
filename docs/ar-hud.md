@@ -42,16 +42,35 @@ The same setting puts CarPlay's turns in the car's own format too (`CpTurns.stan
 | ManeuverType | Sent near the maneuver |
 |---|---|
 | 3 straight | `TURN` 0 |
-| 1 / 2 left / right | `TURN` 270 / 90, or the exit angle's 45 degree step |
+| 1 / 2 left / right, 20 / 21 left / right at the end of the road | `TURN` 270 / 90, or the exit angle's 45 degree step |
 | 49 / 50 slight left / right | `TURN` 315 / 45 |
 | 47 / 48 sharp left / right | `TURN` 225 / 135 |
-| 4 U-turn | `U_TURN` 270 (90 for left-hand traffic) |
-| 52 / 53 change highway left / right | `FORK_2` 270 / 90 |
-| 22 / 23 highway off-ramp left / right | `EXIT_LEFT` / `EXIT_RIGHT` |
+| 4 U-turn, 26 U-turn when possible | `U_TURN` 270 (90 for left-hand traffic) |
+| 52 / 53 change highway left / right, 13 / 14 keep left / right | `FORK_2` 270 / 90 |
+| 22 / 23 highway off-ramp left / right, with or without an exit angle | `EXIT_LEFT` / `EXIT_RIGHT` |
+| 8 off-ramp with no side | `EXIT_RIGHT` / `EXIT_LEFT` by the exit angle's side, else the side traffic keeps to (right in the US) |
 | roundabout exit icons (96-107, 192-203) | `EXIT_ROUNDABOUT_TRS_RIGHT` 32 (33 for left-hand traffic) with the icon's direction |
 | arrival icons 112/113/114 | the icon, no bar; `ARRIVED` within 20 m |
 
 On-ramps and ferries keep their icon, with the bar. CarPlay has no reroute status in its maneuvers, so there is no "Recalculating..." for it.
+
+Farther out, and with the setting off, 8, 13 / 14, 20 / 21 and 26 get the icons of the
+maneuvers they're like (exit 81 / 82, fork 174 / 173, turn, U-turn). The turn-by-turn
+build's table (ported from DiPO) gave them none, nor 22 / 23 with an exit angle, so nothing
+was sent for them. [Evergreen](https://github.com/KSubedi/gen5w-Evergreen)'s CarPlay AR
+builds (1.2.0.104 to 1.2.0.112, notes/carplay-ar.md) found this on a US EV6 (260507) with
+Apple Maps: its highway exits came as 8 with no exit angle, and keep left / right as 13 / 14.
+
+Two more of its findings, in both formats:
+
+- **The previous turn is cleared** when the phone's current maneuver changes to one with no
+  icon. Before, the old turn and HUD list stayed up (Apple Maps guiding to an exit a mile on
+  while the cluster still showed "straight, 10 ft"). The same maneuver losing its icon (an
+  update without its optional exit angle) keeps what it showed.
+- **A turn goes out when its details arrive.** If the phone's route update names a current
+  maneuver whose details haven't come yet, the turn is sent when they do, not at the next
+  route update. While the car stands the phone sends none, so a route started parked
+  stayed blank until the car moved.
 
 **Logs:** HMG-API's log gets one line per maneuver: `CarPlay turn: type … side … junction … exit … -> icon …, near: type … dir …`.
 
