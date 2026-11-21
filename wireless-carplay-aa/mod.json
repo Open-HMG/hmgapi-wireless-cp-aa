@@ -376,6 +376,17 @@
       "features": [
         "hmgapi.wifi"
       ]
+    },
+    {
+      "model": "IKFL",
+      "region": "CAN",
+      "firmware": "260903",
+      "props": {
+        "ro.build.product": "IKFL.CAN.0000.V016.010.260903"
+      },
+      "features": [
+        "hmgapi.wifi"
+      ]
     }
   ],
   "parts": [
