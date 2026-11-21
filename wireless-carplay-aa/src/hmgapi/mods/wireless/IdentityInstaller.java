@@ -63,26 +63,23 @@ final class IdentityInstaller {
         CarPlayIdentification.VehicleIdentity vehicle = registry.vehicle();
         CarPlayIdentification.ThemeIdentity theme = registry.theme();
         if (vehicle == null && theme == null) { if (loaded) NativeIdentity.shutdown(); armed = false; return; }
-        int dcType = -1, dcPower = 0, acType = -1, acPower = 0;
+        int[] connectorTypes = new int[vehicle == null ? 0 : vehicle.connectors.length];
+        int[] powerParameters = new int[connectorTypes.length];
+        int[] connectorPowers = new int[connectorTypes.length];
         if (vehicle != null) {
-            for (CarPlayIdentification.Connector connector : vehicle.connectors) {
-                if (connector.type == CarPlayIdentification.VehicleIdentity.CONNECTOR_AC) {
-                    if (acType != -1) throw new IllegalStateException("more than one CarPlay AC connector");
-                    acType = connector.type; acPower = connector.maximumPowerW;
-                } else {
-                    if (dcType != -1) throw new IllegalStateException("more than one CarPlay DC connector");
-                    dcType = connector.type; dcPower = connector.maximumPowerW;
-                }
+            for (int i = 0; i < vehicle.connectors.length; i++) {
+                CarPlayIdentification.Connector connector = vehicle.connectors[i];
+                connectorTypes[i] = connector.type;
+                powerParameters[i] = connector.maximumPowerParameter;
+                connectorPowers[i] = connector.maximumPowerW;
             }
-            if (dcType == -1 || acType == -1)
-                throw new IllegalStateException("CarPlay EV identity requires one DC and one AC connector");
         }
         if (!loaded) { NativeIdentity.load(); loaded = true; }
         try {
             byte[] name = vehicle == null ? new byte[0] : vehicle.displayName.getBytes("UTF-8");
             byte[] themeId = theme == null ? new byte[0] : theme.encoded().getBytes("US-ASCII");
             int rc = NativeIdentity.configure(name, vehicle == null ? -1 : vehicle.engineType,
-                    dcType, dcPower, acType, acPower, themeId);
+                    connectorTypes, powerParameters, connectorPowers, themeId);
             if (rc != 0) throw new NativeFailure(rc);
             armed = true;
         } catch (java.io.UnsupportedEncodingException impossible) {

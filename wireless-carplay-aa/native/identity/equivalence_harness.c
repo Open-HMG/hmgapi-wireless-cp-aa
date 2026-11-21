@@ -6,7 +6,7 @@ void *memcpy(void *d,const void *s,u32 n){char *a=d;const char *b=s;while(n--)*a
 void *__aeabi_memcpy(void *d,const void *s,u32 n){char *a=d;const char *b=s;while(n--)*a++=*b++;return d;}
 void *__aeabi_memcpy4(void *d,const void *s,u32 n){return __aeabi_memcpy(d,s,n);}
 
-char output[3][1024];
+char output[4][1024];
 int result;
 static u32 at,value=42,mailbox,slot;
 static Param root[24],stock_info[5],stock_status[13],stock_wireless[2];
@@ -54,17 +54,26 @@ int test_main(void){
     root_table=root;info_table=stock_info;status_table=stock_status;
     root_lookup=root_values;info_lookup=stock_lookup;status_lookup=stock_lookup;wireless_lookup=wireless_values;raw_builder=build;
     lock_mutex=mutex;unlock_mutex=mutex;protect_page=protect;hook_mailbox=&mailbox;
-    result=configure("Kia EV6",7,2,0,235000,2,10900,"",0);slot=0;
+    static const int standard_connectors[]={0,2};
+    static const int standard_power_ids[]={12,14};
+    static const int standard_powers[]={235000,10900};
+    static const int multiple_connectors[]={0,7,2};
+    static const int multiple_power_ids[]={12,19,14};
+    static const int multiple_powers[]={235000,235000,10900};
+    result=configure("Kia EV6",7,2,standard_connectors,standard_power_ids,standard_powers,2,"",0);slot=0;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
-    result|=configure("Kia EV6",7,2,0,235000,2,10900,"THEME1:985:19.0",15);slot=1;
+    result|=configure("Kia EV6",7,2,standard_connectors,standard_power_ids,standard_powers,2,"THEME1:985:19.0",15);slot=1;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
-    result|=configure("",0,-1,-1,0,-1,0,"THEME1:985:19.0",15);slot=2;
+    result|=configure("",0,-1,0,0,0,0,"THEME1:985:19.0",15);slot=2;
+    identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
+    result|=configure("Kia EV6",7,2,multiple_connectors,multiple_power_ids,multiple_powers,3,"",0);slot=3;
     identity_builder(0,0,0,0,0x1d01,root,24,"identity",root_values);
     return 0;
 }
 static const char expected_vehicle[]="[20:20.0=42;20.1=42;20.2=2;20.6=Kia EV6;20.8=Kia EV6;20.11=0;20.11=2;20.12=235000;20.14=10900;][21:21.3=42;21.6=42;21.11=42;21.21=;21.30=;][24:24.0=42;24.1=stock;]";
 static const char expected_both[]="[20:20.0=42;20.1=42;20.2=2;20.6=Kia EV6;20.8=Kia EV6;20.11=0;20.11=2;20.12=235000;20.14=10900;][21:21.3=42;21.6=42;21.11=42;21.21=;21.30=;][24:24.0=42;24.1=stock;24.5=;24.6=THEME1:985:19.0;]";
 static const char expected_theme[]="[24:24.0=42;24.1=stock;24.5=;24.6=THEME1:985:19.0;]";
+static const char expected_multiple[]="[20:20.0=42;20.1=42;20.2=2;20.6=Kia EV6;20.8=Kia EV6;20.11=0;20.11=7;20.11=2;20.12=235000;20.19=235000;20.14=10900;][21:21.3=42;21.6=42;21.11=42;21.21=;21.30=;][24:24.0=42;24.1=stock;]";
 static const char pass[]="PASS Wireless serializer output is byte-for-byte equivalent to the former EV Routing serializer\n";
 static const char fail[]="FAIL Wireless serializer output differs from the former EV Routing serializer\n";
 static const char start[]="Running ARM CarPlay identity comparison\n";
@@ -74,9 +83,9 @@ static void semihost(u32 operation,const void *argument){
     __asm__ volatile("svc 0x123456"::"r"(r0),"r"(r1):"memory");
 }
 void run(void){
-    semihost(4,start);test_main();int ok=result==0 && same(output[0],expected_vehicle) && same(output[1],expected_both) && same(output[2],expected_theme);
-    if(!ok){semihost(4,output[0]);semihost(4,"\n");semihost(4,output[1]);semihost(4,"\n");semihost(4,output[2]);semihost(4,"\n");}
+    semihost(4,start);test_main();int ok=result==0 && same(output[0],expected_vehicle) && same(output[1],expected_both) && same(output[2],expected_theme) && same(output[3],expected_multiple);
+    if(!ok){for(u32 i=0;i<4;i++){semihost(4,output[i]);semihost(4,"\n");}}
     semihost(4,ok?pass:fail);
     u32 status[2]={0x20026,ok?0:1};semihost(0x20,status);for(;;){}
 }
-__attribute__((naked)) void _start(void){__asm__ volatile("ldr sp, =0x01000000\nb run");}
+__attribute__((naked)) void _start(void){__asm__ volatile("movw r0, #0\nmovt r0, #0x100\nmov sp, r0\nb run");}

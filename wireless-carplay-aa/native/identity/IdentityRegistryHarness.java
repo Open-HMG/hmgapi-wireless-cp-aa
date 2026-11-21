@@ -11,8 +11,9 @@ public final class IdentityRegistryHarness {
             @Override public void log(String message) { log.append(message).append('\n'); }
         });
         CarPlayIdentification.Connector[] connectors = {
-            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS, 235000),
-            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_AC, 10900)
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_CCS1, 235000),
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_NACS_DC, 235000),
+            new CarPlayIdentification.Connector(CarPlayIdentification.VehicleIdentity.CONNECTOR_J1772, 10900)
         };
         registry.registerVehicle("fixture.ev", new CarPlayIdentification.VehicleIdentity("Fixture EV",
                 CarPlayIdentification.VehicleIdentity.ENGINE_ELECTRIC, connectors));
@@ -29,6 +30,16 @@ public final class IdentityRegistryHarness {
         check(log.toString().contains("fixture.theme: register theme identity"), "theme request logged");
         check(log.toString().contains("fixture.conflict: register theme identity"), "rejected request logged");
         check(log.toString().contains("fixture.theme: remove theme identity"), "removal request logged");
+        try {
+            new CarPlayIdentification.VehicleIdentity("Duplicate", CarPlayIdentification.VehicleIdentity.ENGINE_ELECTRIC,
+                    new CarPlayIdentification.Connector[] { connectors[0], connectors[0] });
+            throw new AssertionError("duplicate connector accepted");
+        } catch (IllegalArgumentException expected) {
+            check("duplicate connector type".equals(expected.getMessage()), "duplicate connector rejected");
+        }
+        CarPlayIdentification.Connector opaque = new CarPlayIdentification.Connector(42, 54, 1000);
+        check(opaque.type == 42 && opaque.maximumPowerParameter == 54,
+                "contributor-defined connector accepted");
         System.out.println("PASS mock mods compose independent vehicle and theme contributions");
     }
 

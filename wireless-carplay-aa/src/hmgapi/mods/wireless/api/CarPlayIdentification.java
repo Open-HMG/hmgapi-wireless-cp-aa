@@ -9,7 +9,7 @@ package hmgapi.mods.wireless.api;
  */
 public interface CarPlayIdentification {
     String SERVICE = "carplay-identification";
-    int API_VERSION = 2;
+    int API_VERSION = 3;
 
     /** Register or replace one mod's vehicle identity contribution. */
     void registerVehicle(String modId, VehicleIdentity vehicle);
@@ -62,9 +62,20 @@ public interface CarPlayIdentification {
         public static final int ENGINE_DIESEL = 1;
         public static final int ENGINE_ELECTRIC = 2;
         public static final int ENGINE_CNG = 3;
-        public static final int CONNECTOR_CCS = 0;
-        public static final int CONNECTOR_CHADEMO = 1;
-        public static final int CONNECTOR_AC = 2;
+        public static final int CONNECTOR_CCS1 = 0;
+        public static final int CONNECTOR_CCS2 = 1;
+        public static final int CONNECTOR_J1772 = 2;
+        public static final int CONNECTOR_CHADEMO = 3;
+        public static final int CONNECTOR_MENNEKES = 4;
+        public static final int CONNECTOR_GBT_DC = 5;
+        public static final int CONNECTOR_GBT_AC = 6;
+        public static final int CONNECTOR_NACS_DC = 7;
+        public static final int CONNECTOR_NACS_AC = 8;
+        /** Compatibility alias for the original North American CCS API. */
+        public static final int CONNECTOR_CCS = CONNECTOR_CCS1;
+        /** Compatibility alias for the original North American AC API. */
+        public static final int CONNECTOR_AC = CONNECTOR_J1772;
+        public static final int MAX_CONNECTORS = 9;
 
         public final String displayName;
         public final int engineType;
@@ -76,27 +87,42 @@ public interface CarPlayIdentification {
                 throw new IllegalArgumentException("displayName");
             if (engineType < ENGINE_GASOLINE || engineType > ENGINE_CNG)
                 throw new IllegalArgumentException("engineType");
-            if (connectors == null || connectors.length == 0)
+            if (connectors == null || connectors.length == 0 || connectors.length > MAX_CONNECTORS)
                 throw new IllegalArgumentException("connectors");
             this.displayName = displayName;
             this.engineType = engineType;
             this.connectors = connectors.clone();
-            for (Connector connector : this.connectors)
+            for (int i = 0; i < this.connectors.length; i++) {
+                Connector connector = this.connectors[i];
                 if (connector == null) throw new IllegalArgumentException("connector");
+                for (int j = 0; j < i; j++)
+                    if (this.connectors[j].type == connector.type)
+                        throw new IllegalArgumentException("duplicate connector type");
+                    else if (this.connectors[j].maximumPowerParameter == connector.maximumPowerParameter)
+                        throw new IllegalArgumentException("duplicate connector maximum-power parameter");
+            }
         }
     }
 
     /** One physical charging connector and its advertised maximum input power. */
     final class Connector {
         public final int type;
+        public final int maximumPowerParameter;
         public final int maximumPowerW;
 
         public Connector(int type, int maximumPowerW) {
-            if (type < VehicleIdentity.CONNECTOR_CCS || type > VehicleIdentity.CONNECTOR_AC)
+            this(type, 12 + type, maximumPowerW);
+        }
+
+        public Connector(int type, int maximumPowerParameter, int maximumPowerW) {
+            if (type < 0 || type > 0xff)
                 throw new IllegalArgumentException("connector type");
+            if (maximumPowerParameter < 0 || maximumPowerParameter > 0xffff)
+                throw new IllegalArgumentException("maximum power parameter");
             if (maximumPowerW < 1 || maximumPowerW > 1000000)
                 throw new IllegalArgumentException("maximumPowerW");
             this.type = type;
+            this.maximumPowerParameter = maximumPowerParameter;
             this.maximumPowerW = maximumPowerW;
         }
     }
