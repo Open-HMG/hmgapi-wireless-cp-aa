@@ -27,6 +27,8 @@ public final class ModContext {
     }
     public void log(String message) { logs.add(message); }
     public void error(String message, Throwable error) { throw new AssertionError(message, error); }
+    public boolean enabled() { return true; }
+    public static String md5(String path) { return null; }
     public static final class CarPlayPart {
         public static void start(ModContext mod, LoadedApp app) { mod.cpStarts++; }
     }

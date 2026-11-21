@@ -82,7 +82,7 @@ road ahead and names few of an intersection's roads. That isn't enough for side 
 Unless the engine keeps more branches than it logs (`CStubMsgMgr`, not looked at), this
 path is a dead end.
 
-### The engine's road graph (next)
+### The engine's road graph (being ported)
 
 ch0iiih's HMG_Phone_Projection_TBT reads the road graph around the car's position straight
 from the engine (`navigation-api/native`: `CPositionInfo::GetDisplayPosition`,
@@ -90,23 +90,69 @@ from the engine (`navigation-api/native`: `CPositionInfo::GetDisplayPosition`,
 node (`StockMapJunction`, `CompoundJunction`). It does this on two Korean engine builds only,
 pinned by SHA-256 and an address anchor. `tools/navi/engine-check.py <libExSLNavi.so>
 [<libExSLAndroidJNI.so>]` prints what a build offers for this, as JSON with no file
-bytes, to compare builds across cars:
+bytes, to compare builds across cars.
 
-- **US Ioniq 5 260507:** all 28 symbols the helper binds are exported, and the geometry
-  functions are the same size as on the Korean builds. The two weak `mArray::clear` symbols
-  are exported (no fixed-offset fallback needed). `NewComponent`, the helper's anchor, is at
-  another address (`0x2242465`). The position callback the helper hooks
-  (`NativeCall.sendGISInfo`) is there with the same signature.
-- **Still to verify on this build:** that component 0x7200 is `CPositionInfo` and its
-  vtable slot 0x20 is the call the helper makes, that `stConnectLink` is 0x58 bytes, and
-  that `CVehiclePosition` fits 1024 bytes.
+**On the US Ioniq 5 260507 engine** (md5 `caa8d4c2…`):
 
-A port means:
+- All 28 symbols the helper binds are exported, the geometry functions are the same size
+  as on the Korean builds, and the two weak `mArray::clear` symbols are exported, so no
+  address anchor or fixed-offset fallback is needed.
+- But the head unit's Android 4.4 `dlsym` returns only `STB_GLOBAL` symbols, so on the car
+  those two came back missing ("lacks `_ZN6mArrayI13stConnectLinkE5clearEv`", 2026-11-21).
+  `navigraph_elf_lookup` now finds them in the loaded engine's own dynamic symbol table
+  (`DT_HASH`, `DT_SYMTAB`, `DT_STRTAB`), from the engine's base that `dladdr` gives for one
+  of its global functions. The `dladdr` check that every address is in `libExSLNavi.so`
+  stays. `NAVI_LIB=<libExSLNavi.so> tools/navigraph/test.sh` binds all 28 from the file that way.
+- The helper's layout assumptions, checked against the engine's own code:
+  - `Navi::VI::CService::GetVehiclePosition` makes the same calls: `NewComponent(0x7200)`,
+    its vtable slot 0x20, then `CPositionInfo::GetDisplayPosition(…, false)`.
+  - `mArray<stConnectLink>::operator[]` is `items + index × 0x58`, and entries start with
+    parcel then link (u64 each).
+  - The engine's own `Spawn` and `GetPosition` callers build `mArray` as {items, count,
+    capacity, grow 16, u16 module}.
+  - `CVehiclePosition` (about 0x120 bytes), `CEntityLink` and `CEntityNode` (about 0x28)
+    fit the 1 KB buffers.
+- **One difference:** the array module tag. The engine's `CInformation` uses 0x9550 where
+  ch0iiih's Korean builds use 0x2100, so it's per engine profile.
 
-1. a per-engine profile (hash, anchor, layout constants) in place of the helper's Korean pins;
-2. the native helper built and staged in `com.mnsoft.navi`;
-3. a `sendGISInfo` hook point in HMG-API's catalogue;
-4. the matcher in Java. ch0iiih's code is AGPL-3.0 like this mod, so it can be reused
-   with attribution.
+**Step 1, in the mod (test setting `navi_road_graph`, off by default):** read and log only.
+- `native/navigraph` (`files/libwlnavigraph.so`, installed in `/system/lib` and loaded only
+  with the setting) is ch0iiih's helper without the Korean pins:
+  - every symbol through `dlsym(RTLD_DEFAULT)`, and refused unless `dladdr` puts it in
+    `libExSLNavi.so`;
+  - the module tag from the profile;
+  - imports only `dlsym` and `dladdr`.
+- `NaviGraph`, in `com.mnsoft.navi`:
+  - waits for the engine to load and picks its profile by md5. Any other build is left
+    alone and logged.
+  - once a second, reads the matched link and the node ahead.
+  - writes a line to HMG-API's log when the result changes, e.g. `road graph: on a link
+    with 2 onward; node ahead: 3 roads, angles [-90, 0, 90], side streets 0x811`. No
+    coordinates, link ids or names.
 
-The risk: a wrong constant crashes the car's navigation.
+  Nothing goes to the cluster.
+- Tested off the car: `tools/navigraph/test.sh` runs the C against a mock engine (call
+  order, module tag, refusals, every engine object freed) and the node geometry in Java.
+
+**On the car**, with `navi_road_graph` on, the car's navigation running and a phone
+guiding or not:
+- HMG-API's log says "reading the US 260507 (Ioniq 5 NEEV23) engine's road graph".
+- At intersections the lines match the real roads.
+- The navigation keeps working: map, guidance, speed limits and lanes.
+
+If the navigation app crashes or misbehaves, turn the setting off and keep the log.
+
+**Next, once the car confirms step 1:**
+- Ask only near the phone's next maneuver. The phone side (`AaTurns` in GPM, `CpTurns` in
+  DiPO) asks `com.mnsoft.navi` for the junction at its maneuver's distance, and the answer
+  comes back across processes. ch0iiih uses `Settings.Global` with a short lease; a
+  broadcast also works.
+- Port the matcher (`StockMapLookahead`, `StockMapJunction`, later `CompoundJunction`):
+  walk forward to the node at the phone's distance, then accept only an unambiguous
+  match with the phone's maneuver side and angle.
+- Put its side streets in the `TURN` frame, for Android Auto and for CarPlay turns that
+  came without a junction.
+
+ch0iiih's code is AGPL-3.0 like this mod and is credited where it's used. The risk stays
+the same: a wrong constant on a new engine build crashes the car's navigation, so each
+build needs its profile checked against its own code first (the list above).

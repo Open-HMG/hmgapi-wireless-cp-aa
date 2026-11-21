@@ -136,12 +136,17 @@ public final class Wireless extends ModEntry {
      * (CInformation::IsSupportSideStreet); a memory recipe per engine build
      * (recipes/navi-side-streets-*.recipe, from tools/navi/side-streets-recipe.py) makes
      * it always do so. On an engine build with no recipe nothing changes, and the log says so.
+     *
+     * Setting navi_road_graph (a test, off by default): NaviGraph reads the engine's road
+     * graph at the intersection ahead and logs its roads (the source Android Auto's side
+     * streets will need). Read and log only.
      */
     private void navigation(final ModContext mod, final LoadedApp app) {
         if (mod.settingBoolean("navi_side_streets", false)) {
             mod.nativePatch(app, "libExSLNavi.so");
             mod.log("navigation: side streets on the car navigation's own turns, if its engine build has a recipe");
         }
+        if (mod.settingBoolean("navi_road_graph", false)) NaviGraph.start(mod, app);
         if (!mod.settingBoolean("tbt", true)) return;
         // Keep stock navigation available when this mod cannot supply AA turns. CarPlay
         // and cars with GPM's own turn-by-turn retain their existing arbitration.
