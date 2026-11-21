@@ -37,5 +37,16 @@ if [ -f "$lib" ] && [ -x $L ]; then
     fi
     echo "ok    carplay-core-frames-ef49c09b: no match on 260507's libCarPlayCore, nothing written"
 fi
+# the car navigation's side streets: the generator, run again on the engine, gives the
+# committed recipe, and the recipe in memory gives the generator's patched engine
+N=$(cd "$(dirname "$0")/../navi" && pwd)
+for x in neev23-usa-260507:caa8d4c2; do
+    lib=$H/car/${x%%:*}/navi/libExSLNavi.so; rc=$R/navi-side-streets-${x#*:}.recipe
+    [ -f "$lib" ] || continue
+    python3 -I $N/side-streets-recipe.py "$lib" --out "$CP/navi.recipe" --patched "$CP/navi-${x#*:}.so" 2>/dev/null
+    if cmp -s "$CP/navi.recipe" "$rc"; then echo "ok    navi-side-streets-${x#*:}: generated again, the same recipe"
+    else echo "FAIL  navi-side-streets-${x#*:}: the generator gives another recipe"; exit 1; fi
+    set -- "$@" "$lib" "$CP/navi-${x#*:}.so" $rc
+done
 [ $# -gt 0 ] || { echo "no stock libraries in $H (skipped)"; exit 0; }
 exec java -cp "$SDK/lib/hmgapi-engine.jar:$SDK/test/hmgapi-engine-test.jar" hmgapi.engine.MemRecipeTest "$@"

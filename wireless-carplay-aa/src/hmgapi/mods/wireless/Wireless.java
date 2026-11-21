@@ -129,8 +129,19 @@ public final class Wireless extends ModEntry {
      * no route it sends the lanes of every intersection it passes, none marked, in the
      * same 0xF1 frame as the phone's lanes for the next turn, which it overwrote (US
      * Ioniq 5, 2026-11-03). Framework calls only: no app names.
+     *
+     * Setting navi_side_streets (off by default, not tied to "tbt"): the car navigation's
+     * own turns carry the intersection's side streets outside Korea too. Its engine
+     * (libExSLNavi.so) works them out for every turn but keeps them for Korea
+     * (CInformation::IsSupportSideStreet); a memory recipe per engine build
+     * (recipes/navi-side-streets-*.recipe, from tools/navi/side-streets-recipe.py) makes
+     * it always do so. On an engine build with no recipe nothing changes, and the log says so.
      */
     private void navigation(final ModContext mod, final LoadedApp app) {
+        if (mod.settingBoolean("navi_side_streets", false)) {
+            mod.nativePatch(app, "libExSLNavi.so");
+            mod.log("navigation: side streets on the car navigation's own turns, if its engine build has a recipe");
+        }
         if (!mod.settingBoolean("tbt", true)) return;
         // Keep stock navigation available when this mod cannot supply AA turns. CarPlay
         // and cars with GPM's own turn-by-turn retain their existing arbitration.
