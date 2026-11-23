@@ -1,0 +1,7 @@
+# App fingerprints (md5 of the stock .odex files in /system/app) from seven Niro EV US 260507 Car Reports
+# (HMG-API #12: 2026-11-02 to 2026-11-18, HMG-API 1.0.0-beta.5 to 1.1.0-rc.4; all seven agree).
+# No app files are replaced. The Car Reports don't list the CarPlay libraries.
+HKMC_BtSettings.odex 8c6f5012c978ae053df325b80cd9e56e
+HKMC_DiPO.odex 6953fa525b2a2fe4252250f38296c837
+HKMC_GPM.odex c4f751a36be916e72cf93df0436d63c2
+Iap2ServerApp.odex f3e22d94150de40f4ed603798358b0e3
