@@ -184,4 +184,33 @@ text = buf.getvalue()
 check("adasis: the output has no coordinates and no road names",
       "Nowhere" not in text and "(1, 2)" not in text and "side branches [-90, 90]" in text)
 
+# ---- road-graph-study on a made-up drive: a right turn at a crossroad, the phone reading 12 m long
+rgs = load("road-graph-study")
+check("road graph study: the window and the fit follow NaviGraph",
+      rgs.window(50) == 25 and rgs.window(280) == 35 and rgs.window(600) == 45
+      and rgs.fits([-90, 0, 90], 90) and rgs.fits([-81, -18, 101], -90) and not rgs.fits([-81, -40, 101], -90)
+      and not rgs.fits([0, 60, 120], 90) and not rgs.fits([-85], -90) and rgs.fits([-90, 0, 90], 0) and not rgs.fits([-5, 150], -90))
+lines = []
+for k in range(12):                         # 10 m/s along a 200 m link, then a 100 m one to the crossroad
+    t = "11-21 10:00:%02d.000 I/HMG-API ( 1): [wireless-carplay-aa] road graph: " % k
+    on, pos = (200, 100 + k * 10) if k < 10 else (100, (k - 10) * 10)
+    left = (200 - pos) + 100 if k < 10 else 100 - pos
+    node = "2 roads, angles [0, 45], side streets 0x3" if k < 10 else "3 roads, angles [-90, 0, 90], side streets 0x811"
+    lines.append(t + "on a link of %d m, %d m along, heading backward, node ahead in %d m: %s" % (on, pos, on - pos, node))
+    lines.append(t + "junction %d m, turn 90: %s" % (left + 12, "no junction near %d m" % (left + 12) if k != 11 else "matched, side streets 0x811 at 90 m"))
+open(os.path.join(OUT, "graph.log"), "w").write("\n".join(lines) + "\n")
+probes, questions = rgs.read(os.path.join(OUT, "graph.log"))
+rgs.speeds(probes)
+rows, offsets = rgs.study(probes, questions)
+check("road graph study: one approach, 12 answers, 1 matched then; the node ahead now: 2 matched, 10 beyond: %r" % (rows,),
+      rows == [(90, 12, 212, 102, 1, 2, 10, 0, 0)])
+check("road graph study: the phone reads 12 m long at 10 m/s: %r" % (offsets,),
+      [o for o, _, _, _ in offsets] == [12, 12] and all(v is not None and abs(v - 10) < 0.5 for _, v, _, _ in offsets))
+buf = io.StringIO()
+sys.stdout, out = buf, sys.stdout
+sys.argv = ["road-graph-study.py", os.path.join(OUT, "graph.log")]
+rgs.main()
+sys.stdout = out
+check("road graph study: prints the totals", "matched then 1; node ahead now: matched 2, beyond 10" in buf.getvalue())
+
 sys.exit(fail)

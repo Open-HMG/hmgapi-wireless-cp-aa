@@ -42,6 +42,14 @@
       "description": "For developing side streets under Android Auto: once a second the mod reads the car navigation's map at the intersection ahead (its roads, read only) and writes their angles to HMG-API's log when they change; nothing goes to the cluster. Only on navigation engine builds the mod knows (so far the US Ioniq 5's on 260507). It calls into the navigation's engine: if the navigation misbehaves, turn it off and send the log. Takes effect when the head unit restarts."
     },
     {
+      "key": "tbt_map_side_streets",
+      "type": "toggle",
+      "default": false,
+      "title": "Android Auto: the intersection's side streets from the car's map (test)",
+      "apply": "restart",
+      "description": "With \"Turns in the car's own format\" on: near a turn, the cluster draws the roads of the intersection around Android Auto's arrow, taken from the car navigation's own map, since Android Auto sends no junction shape. Only where the map's junction at the phone's distance matches the turn unambiguously; anywhere else the plain arrow, as before. Only on navigation engine builds the mod knows (so far the US Ioniq 5's on 260507). It calls into the navigation's engine: if the navigation or the AR HUD misbehaves, turn it off and send the log. Takes effect when the head unit restarts."
+    },
+    {
       "key": "bridge",
       "type": "toggle",
       "default": true,

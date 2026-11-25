@@ -1,6 +1,7 @@
 #!/bin/sh
 # Host test of the car-navigation tools (tools/navi) on synthetic inputs, no car files:
-# the side-streets recipe generator, the engine profile and the ADASIS study. With the
+# the side-streets recipe generator, the engine profile, the ADASIS study and the road graph
+# study. With the
 # HMG-API mod SDK (HMGAPI_SDK), the synthetic recipe also goes through MemRecipeTest.
 set -e
 cd "$(dirname "$0")"

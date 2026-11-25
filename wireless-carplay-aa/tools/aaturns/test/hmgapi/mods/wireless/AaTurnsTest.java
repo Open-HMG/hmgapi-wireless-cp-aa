@@ -257,7 +257,66 @@ public final class AaTurnsTest {
         off.status(1);
         off.status(3);
         check("standard turns off: no Recalculating", oh.delayed == null);
+        mapSideStreets();
         System.exit(fail);
+    }
+
+    /** tbt_map_side_streets: a TURN's side streets from the car's map (MapJunction) */
+    static void mapSideStreets() {
+        final java.util.List<String> asked = new java.util.ArrayList<String>();
+        final int[] answer = { 0x811 };
+        AaTurns j = new AaTurns(new android.content.Context(), c, new Handler());
+        j.standardTurns = true;
+        j.junctions = new AaTurns.Junctions() {
+            @Override
+            public int sides(int id, int meters, int angle) {
+                asked.add(id + " " + meters + " " + angle);
+                return answer[0];
+            }
+
+            @Override
+            public void close() {
+                asked.add("close");
+            }
+        };
+        j.status(1);
+        j.nextTurn("Oak Ave", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        c.calls.clear();
+        j.nextTurnDistance(1200, 90, 700, AaTurns.MILES_P1);
+        expect("map side streets: 0.7 mi out it's the icon", "tbt 67 65535 90.0 0.7 0 0 2 0 0", "2c 2 7 0 0 0 0 0 0 0");
+        check("... and nothing asked", asked.isEmpty());
+        j.nextTurnDistance(300, 25, 186, AaTurns.MILES_P1);
+        expect("map side streets: 300 m out, TURN 90 with the map's crossroad (0x811 = 2065)",
+                "tbt 13 2065 90.0 0.186 0 0 2 60 0", "2c 2 2 0 0 0 0 0 0 0");
+        int first = j.turnId;
+        check("map side streets: asked about this turn at its meters, right 90: " + asked, asked.equals(java.util.Arrays.asList(first + " 300 90")));
+        answer[0] = 0;
+        j.nextTurnDistance(250, 20, 155, AaTurns.MILES_P1);
+        expect("map side streets: no match, the plain arrow", "tbt 13 0 90.0 0.155 0 0 2 50 0", "2c 2 2 0 0 0 0 0 0 0");
+        j.nextTurn("Pine St", AaTurns.LEFT, AaTurns.SHARP_TURN, -1, 0);
+        check("a new maneuver gets a new id", j.turnId == first + 1);
+        j.nextTurn("Pine St", AaTurns.LEFT, AaTurns.SHARP_TURN, -1, 0);
+        check("the same maneuver again keeps its id", j.turnId == first + 1);
+        asked.clear();
+        answer[0] = 0x201;
+        j.nextTurnDistance(100, 8, 328, AaTurns.FEET);
+        check("map side streets: a sharp left asks -135: " + asked, asked.equals(java.util.Arrays.asList((first + 1) + " 100 -135")));
+        j.nextTurn("Ramp", AaTurns.RIGHT, AaTurns.ON_RAMP, -1, 0);
+        asked.clear();
+        c.calls.clear();
+        j.nextTurnDistance(100, 8, 328, AaTurns.FEET);
+        check("map side streets: an on-ramp's TURN asks nothing and sends 0: " + c.calls,
+                asked.isEmpty() && c.calls.toString().contains("tbt 13 0 "));
+        j.end();
+        check("map side streets: the session's end closes the map's side (its receiver): " + asked,
+                asked.equals(java.util.Arrays.asList("close")) && j.junctions == null);
+        check("junctionAngle: straight 0, slight 45, left -90, sharp 135; none for ramps, U-turns and no side",
+                AaTurns.junctionAngle(AaTurns.STRAIGHT, 0) == 0 && AaTurns.junctionAngle(AaTurns.SLIGHT_TURN, AaTurns.RIGHT) == 45
+                        && AaTurns.junctionAngle(AaTurns.TURN, AaTurns.LEFT) == -90
+                        && AaTurns.junctionAngle(AaTurns.SHARP_TURN, AaTurns.RIGHT) == 135
+                        && AaTurns.junctionAngle(AaTurns.OFF_RAMP, AaTurns.RIGHT) == AaTurns.NO_ANGLE
+                        && AaTurns.junctionAngle(AaTurns.U_TURN, AaTurns.LEFT) == AaTurns.NO_ANGLE
+                        && AaTurns.junctionAngle(AaTurns.TURN, AaTurns.UNSPECIFIED) == AaTurns.NO_ANGLE);
     }
 
     static void stdCase(String what, int ev, int side, int icon, int iconDir, int m, String want) {

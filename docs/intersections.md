@@ -127,8 +127,8 @@ bytes, to compare builds across cars.
     alone and logged.
   - once a second, reads the matched link and the node ahead.
   - writes a line to HMG-API's log when the result changes, e.g. `road graph: on a link
-    with 2 onward; node ahead: 3 roads, angles [-90, 0, 90], side streets 0x811`. No
-    coordinates, link ids or names.
+    of 150 m, 40 m along, heading forward, node ahead in 110 m: 3 roads, angles [-90, 0,
+    90], side streets 0x811`. No coordinates, link ids or names.
 
   Nothing goes to the cluster.
 - Tested off the car: `tools/navigraph/test.sh` runs the C against a mock engine (call
@@ -138,20 +138,123 @@ bytes, to compare builds across cars.
 guiding or not:
 - HMG-API's log says "reading the US 260507 (Ioniq 5 NEEV23) engine's road graph".
 - At intersections the lines match the real roads.
+- **The distance to the node ahead counts down as the car drives toward it, and resets at
+  each node.** That checks `GetLinkPos`'s meaning. The engine keeps millimetres and the
+  getter divides by 1000; the mod takes it as counted from the link's first shape point,
+  so heading toward its last point the distance left is length − pos. If the distance
+  counts up instead, that's the wrong way round, and step 2 can't find junctions until
+  `NaviGraph.remaining()` is changed.
 - The navigation keeps working: map, guidance, speed limits and lanes.
 
 If the navigation app crashes or misbehaves, turn the setting off and keep the log.
 
-**Next, once the car confirms step 1:**
-- Ask only near the phone's next maneuver. The phone side (`AaTurns` in GPM, `CpTurns` in
-  DiPO) asks `com.mnsoft.navi` for the junction at its maneuver's distance, and the answer
-  comes back across processes. ch0iiih uses `Settings.Global` with a short lease; a
-  broadcast also works.
-- Port the matcher (`StockMapLookahead`, `StockMapJunction`, later `CompoundJunction`):
-  walk forward to the node at the phone's distance, then accept only an unambiguous
-  match with the phone's maneuver side and angle.
-- Put its side streets in the `TURN` frame, for Android Auto and for CarPlay turns that
-  came without a junction.
+**Step 2: Android Auto's side streets (setting `tbt_map_side_streets`, off by default,
+with `tbt_standard`).** Near a turn, the cluster draws the map's roads around Android
+Auto's arrow.
+- **The question** (`MapJunction`, in GPM). When `AaTurns` sends a `TURN` within the
+  457 m window for a straight, slight, normal or sharp turn, it asks `com.mnsoft.navi` by
+  broadcast: the maneuver's id, the phone's meters to it, and the turn's angle (0, ±45,
+  ±90, ±135, right positive). It asks again at most once a second, or at once for a new
+  maneuver. Ramps, forks, U-turns and roundabouts ask nothing and keep 0.
+  - **Who may ask and answer:** the question goes to `com.mnsoft.navi` only, and the
+    navigation takes questions only from a sender holding `BLUETOOTH_PRIVILEGED` (the
+    system's apps hold it, and GPM runs as the system; an app installed on the head unit
+    doesn't). Each Android Auto session asks with a random token, and only an answer
+    with that token counts, so only the navigation, which alone got the question, can
+    answer it.
+  - **When the session ends** (GPM's receiver is destroyed), `AaTurns.end` closes
+    `MapJunction`, which unregisters its receiver, so reconnects don't pile them up.
+- **The walk** (`NaviGraph.find`, after ch0iiih's `StockMapLookahead`):
+  - It starts from the node ahead of the car, the car's remaining meters on its link
+    away.
+  - At each node it goes straight on: the one road within 30° of straight, with any
+    other at least 15° further off. If there's no clear way straight on, it stops.
+  - The phone's distance reads longer than the map's (see the drive below), so it looks
+    around the asked distance less 8 m, within 25 m near the turn, an eighth of the
+    distance farther out, 45 m at most. It stops once past that window.
+  - Of the nodes in the window with more than one road on, the junction is the one the
+    turn fits (the match below). With several, it's the nearest, if it's 10 m nearer
+    than the next. So a side street on the other side just before the turn isn't taken
+    for it.
+- **The match** (`NaviGraph.match`, after ch0iiih's `StockMapJunction`):
+  - The turn has to pick out one road: the nearest to the turn's angle, within 60° (22°
+    for straight), 15° nearer than any other, and on the turn's side.
+  - For a plain left or right, it must be the only road on that side.
+  - Two roads in one 22.5° sector, or a node with one road on, give 0.
+  - A node with any road whose shape didn't load isn't used at all, by the walk or the
+    match: the roads left could look like the only road on a side, or the one way on.
+  - The answer is the junction's side streets: every road leaving it, the turn's included.
+- **The answer** goes back to GPM (`MapJunction`). It counts only if it names the maneuver
+  being asked about, comes back within 2.5 s of the question, and its junction is where the
+  phone's distance said (within the walk's tolerance plus 30 m). A match is then **held for
+  that maneuver** (`NaviGraph.Held`) until a newer match replaces it, the maneuver changes,
+  or the phone's distance grows 100 m past where it matched. A "no match" answer doesn't
+  clear it. Until the first match it sends 0, the plain arrow, as before.
+
+  Without the hold, the side streets came and went on the 2026-11-21 drive. Each answer
+  replaced the last, so the matcher missing one second (another node in tolerance for a
+  moment, the car between links) blanked them. And a match stopped counting once the
+  car had closed more than about 45 m on where it matched, which at speed is under two
+  seconds.
+- **HMG-API's log** gets one line per change in the navigation app, with numbers only:
+  `road graph: junction 300 m, turn 90: matched, side streets 0x811 at 300 m`, or why
+  not, e.g. `... no clear way straight on at 180 m` or `... 2 roads on the turn's side`.
+- **Tested off the car:** `tools/navigraph/test.sh` runs the walk and the match on a
+  made-up map (a T junction, a crossroad, a fork, the refusals), and `MapJunction`'s
+  questions and answers through stand-in broadcasts. `tools/aaturns/test.sh` covers
+  `AaTurns` asking, using and dropping answers.
+
+**The 2026-11-21 drive** (US Ioniq 5, about 2.5 hours, 3,087 road graph lines, 15
+approaches with questions) showed why most turns kept the plain arrow:
+- **The distance to the node ahead was wrong on most links.** The engine's position along
+  the link counts the way the car is going, from 0 up to the link's length, whichever
+  way the link is drawn (298 of 303 links; 220 of them driven toward the link's first
+  point). The helper took it as counted from the first point, so on those 220 it used
+  the distance already driven. Fixed: it's always length minus position.
+- **The phone's distance reads longer than the map's**, by a median of 13 m on the last
+  link before a turn (95 samples: -13 to +30 m, nine in ten between 2 and 22 m). The old
+  window, 15 m either side near a turn, held two in three of them. The new one held all.
+- **Each answer replaced the last**, so the few matches blinked. Fixed with the hold.
+- **Not fixed yet: nodes on a map parcel's edge** (`not read (-36)`, 11% of the node
+  reads). The helper refuses a node that joins another parcel, and the walk stops there:
+  one approach got nothing from 449 m down to 236 m. The engine has the adjacent node
+  and parcel ids for it (`CEntityNode::GetAdjNodeId`, `GetAdjParcelId`); their return
+  types need checking against the engine's own callers first.
+
+`tools/navi/road-graph-study.py <HMG-API log>` does this reading for any drive: per
+approach, what the matcher answered then, what today's rules give for the node ahead of
+the car, and the phone's distance against the map's. It prints numbers and angles only.
+On this drive's 9 approaches (249 answers):
+- **Then: 60 matches. Today's rules, on the node ahead alone: 90**, with at least one in
+  8 of the 9, which the hold keeps to the turn. Another 105 answers had the junction
+  past the node ahead. The log can't replay the walk for those (it has no link ids), but
+  the walk now starts from the right distance.
+- **The ninth approach got nothing.** It was a slight left at speed, and a parcel-edge
+  node stopped the walk at every distance from 454 m in.
+- **The offset is mostly where the two maps put the turn, not delay.** The phone's
+  distance less the map's fits 11.4 m + 0.39 s x speed (r 0.31): a median of 10 m with
+  the car nearly stopped, 16 m at 7 to 11 m/s, and 18 m for rights against 13 m for
+  lefts. It also grows with distance (22 m at 100 to 250 m, 7 samples).
+- **One refusal was a rule too strict**: a left where the road ahead bent 18 degrees left
+  beside the street the turn took counted as two roads on the left. A road within 30
+  degrees of straight is now the way on, as in the walk.
+- **One was right to refuse**: the "turn" was a corner with one road on.
+
+Android Auto's own message dumps (how many steps Maps sends, how often it names the
+road) are in logcat only, which the restart after the drive cleared. Capture
+`logcat -s NAVDUMP AANAV` during the next one.
+
+**On the car**, with `tbt_standard`, `tbt_map_side_streets` (and `navi_road_graph` for the
+step 1 lines) on, Android Auto guiding through city turns:
+- The cluster draws the junction's roads around the arrow near most turns. In the log,
+  `matched` near those turns, and a reason near the others.
+- The AR HUD arrow still animates.
+
+**Not yet:** CarPlay turns that come without a junction. They'd need the same question
+from `CpTurns`, a copy of `MapJunction` in the DiPO part, which can't share classes with
+the main code. Also compound junctions (ch0iiih's `CompoundJunction`: divided roads,
+where one crossing is two nodes) and roundabouts. Those refuse today and keep the plain
+arrow.
 
 ch0iiih's code is AGPL-3.0 like this mod and is credited where it's used. The risk stays
 the same: a wrong constant on a new engine build crashes the car's navigation, so each
