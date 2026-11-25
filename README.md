@@ -64,6 +64,14 @@ Open the mod in HMG-API to change its settings. Tap **Save settings** before
 - **Phone Projection** opens **Device Connections** from the settings menu on US
   and Canadian builds. USB drives and hubs can stay plugged in without
   triggering wired Android Auto.
+- **Android Auto developer mode** is on by default. It advertises Google's
+  Desktop Head Unit identity, following
+  [aa-proxy-rs](https://github.com/aa-proxy/aa-proxy-rs/blob/main/src/mitm.rs),
+  so the phone can allow apps intended for developer testing. App availability
+  depends on the phone and Android Auto version. To disable it, turn off the
+  setting, save and apply changes, then restart the head unit and reconnect.
+  An incompatible receiver keeps its normal identity. Off-car validation only;
+  see [implementation and car checks](docs/android-auto-developer-mode.md).
 - **Experimental: Turn-by-turn directions** appear on the cluster and HUD where supported.
   Android Auto guidance requires a matching firmware recipe. For an AR HUD, try
   the optional **Turns in the car's own format (AR HUD arrow, distance bar)**
