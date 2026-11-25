@@ -270,9 +270,81 @@ public final class CpTurnsTest {
         routeLogs();
         indiaTurns();
         standardTurns();
+        missingDistance();
         evergreenFixes();
         sideStreets();
         System.exit(fail);
+    }
+
+    /**
+     * Issue #24 ("0 ft"): a route update with no formatted distance (item 11) used to go out as 0.
+     * Now: the route's meters (item 10), else the maneuver's own distance, else nothing yet.
+     */
+    static void missingDistance() {
+        Car.unit = Car.DISTANCE_MILES;
+        c = new Cluster();
+        CpTurns t = new CpTurns(new android.content.Context(), c, null);
+        t.maneuver(maneuver(0, 2, 0, 0, 90, "Main St", 800));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 12, ENUM, i(1), 13, U16, i(0)));
+        expect("no item 11 or 10: the maneuver's own 800 m, in the owner's miles, not 0",
+                "road [Main St]", "tbt 67 0 0.0 " + (800 / 1609f) + " 0 0 2 0 0",
+                "hud f201430000" + utf16("Main St"), "2c 2 5 0 0 0 0 0 0 0");
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(100)));
+        expect("item 10 (100 m) and no item 11: the route's meters, in feet under 161 m",
+                "road [Main St]", "tbt 67 0 0.0 " + (100 * 3.28084f) + " 0 0 3 0 0", "2c 3 0 328 0 0 0 0 0 0");
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(90), 11, STR, s("300"), 12, ENUM, i(4)));
+        expect("item 11 again: the phone's own figure and units, as before",
+                "road [Main St]", "tbt 67 0 0.0 300.0 0 0 3 0 0", "2c 3 0 300 0 0 0 0 0 0");
+
+        Car.unit = Car.DISTANCE_KM;
+        c = new Cluster();
+        t = new CpTurns(new android.content.Context(), c, null);
+        t.maneuver(msg(0, U16, i(1), 1, U16, i(0), 3, ENUM, i(1), 4, STR, s("Oak Ave"), 8, ENUM, i(0), 9, ENUM, i(0)));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 11, STR, s(""), 12, ENUM, i(0), 13, U16, i(0)));
+        expect("no distance anywhere (empty item 11, none in the maneuver): the road only, no 0 turn",
+                "road [Oak Ave]");
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(1500)));
+        expect("then item 10 (1500 m) with the owner's km: 1.5 km",
+                "road [Oak Ave]", "tbt 70 0 0.0 1.5 0 0 1 0 0", "hud f201460000" + utf16("Oak Ave"), "2c 1 5 1 0 0 0 0 0 0");
+        t.routeGuidance(msg(0, U16, i(1), 10, U32, i(400), 11, STR, s("abc")));
+        expect("item 11 not a number: the route's meters (400 m), not 0",
+                "road [Oak Ave]", "tbt 70 0 0.0 400.0 0 0 0 0 0", "2c 0 0 400 0 0 0 0 0 0");
+        Car.unit = Car.DISTANCE_MILES;
+
+        // standard turns: only item 10 counts as the distance to the maneuver
+        c = new Cluster();
+        t = new CpTurns(new android.content.Context(), c, null);
+        t.standardTurns = true;
+        t.maneuver(maneuver(0, 12, 0, 0, 0, "Home Rd", 3000));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 11, STR, s("2"), 12, ENUM, i(1), 13, U16, i(0)));
+        expect("standard turns, item 11 without item 10: the destination's icon (112), not ARRIVED from a 0 m it never sent",
+                "road [Home Rd]", "tbt 112 0 0.0 2.0 0 0 2 0 0", "hud f201700000" + utf16("Home Rd"), "2c 2 0 2 0 0 0 0 0 0");
+        check("startupMeters: item 10, else the maneuver's, else -1", startupCase());
+
+        // the list moves on to the next maneuver without new meters (item 10): the old turn's
+        // last 15 m aren't the new one's, so its own 1200 m go out, not near-turn mode
+        c = new Cluster();
+        t = new CpTurns(new android.content.Context(), c, null);
+        t.standardTurns = true;
+        t.maneuver(maneuver(0, 2, 0, 0, 90, "First St", 300));
+        t.maneuver(maneuver(1, 1, 0, 0, -90, "Second St", 1200));
+        t.routeGuidance(msg(0, U16, i(1), 1, ENUM, i(1), 10, U32, i(15), 12, ENUM, i(1), 13, U16, i(0, 1)));
+        check("standard turns: 15 m before the first turn it's near-turn (TURN 90): " + c.calls,
+                c.calls.contains("tbt 13 0 90.0 " + (15 * 3.28084f) + " 0 0 3 10 0"));
+        c.calls.clear();
+        t.routeGuidance(msg(0, U16, i(1), 13, U16, i(1)));
+        check("next maneuver without item 10: its own 1200 m and its icon (70), not the old 15 m: " + c.calls,
+                c.calls.contains("tbt 70 0 0.0 " + (1200 / 1609f) + " 0 0 2 0 0"));
+    }
+
+    static boolean startupCase() {
+        CpTurns.Update u = new CpTurns.Update(1, msg(0, U16, i(1), 1, ENUM, i(1)));
+        CpTurns.Maneuver x = new CpTurns.Maneuver(0, 1, msg(0, U16, i(1), 1, U16, i(0), 3, ENUM, i(2)));
+        if (CpTurns.startupMeters(u, x) != -1) return false;
+        x.read(0, 1, msg(0, U16, i(1), 1, U16, i(0), 5, U32, i(250)));
+        if (CpTurns.startupMeters(u, x) != 250) return false;
+        u.read(1, msg(0, U16, i(1), 10, U32, i(0)));
+        return CpTurns.startupMeters(u, x) == 0;
     }
 
     /**

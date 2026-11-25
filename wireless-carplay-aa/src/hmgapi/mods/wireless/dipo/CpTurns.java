@@ -345,15 +345,6 @@ final class CpTurns {
             return;
         }
         int[] list = u.list == null ? null : u.list.clone();
-        float dist = 0f;
-        if (u.nextStr != null && !u.nextStr.equals("")) {
-            try {
-                dist = Float.parseFloat(u.nextStr);
-                if (Float.isNaN(dist) || Float.isInfinite(dist)) dist = 0f;
-            } catch (NumberFormatException e) {
-                dist = 0f;
-            }
-        }
         if (u.state == 6) cluster.destinationName(0, u.destination);
         LinkedHashMap<Integer, Maneuver> m = maneuvers.get(id);
         if (list == null || list.length == 0) {
@@ -366,14 +357,6 @@ final class CpTurns {
             return;
         }
         waiting.remove(id);
-        int unit;
-        switch (u.nextUnits) {
-            case 0: unit = Cluster.UNIT_KM; break;
-            case 1: unit = Cluster.UNIT_MI; break;
-            case 3: unit = Cluster.UNIT_YD; break;
-            case 4: unit = Cluster.UNIT_FT; break;
-            default: unit = Cluster.UNIT_M; break;
-        }
         int icon = icon(x.type, x.side, x.junction, x.exit, u.state);
         logTurn(x, icon);
         // StartRoute has no direction: clear the previous app's HUD arrow.
@@ -383,13 +366,32 @@ final class CpTurns {
             clearShown(id, list[0], x.type);
             return;
         }
+        // the distance to it: the phone's own figure (item 11) in its units; without one, its
+        // meters (item 10), else the maneuver's own distance (its item 5), in the owner's
+        // units; with none of them, wait. A missing distance went out as 0 ("0 ft", issue #24)
+        float dist = parse(u.nextStr);
+        int unit;
+        if (!Float.isNaN(dist)) {
+            switch (u.nextUnits) {
+                case 0: unit = Cluster.UNIT_KM; break;
+                case 1: unit = Cluster.UNIT_MI; break;
+                case 3: unit = Cluster.UNIT_YD; break;
+                case 4: unit = Cluster.UNIT_FT; break;
+                default: unit = Cluster.UNIT_M; break;
+            }
+        } else {
+            int meters = startupMeters(u, x);
+            if (meters < 0) return;
+            unit = meterUnit(meters, Car.distanceUnit(context));
+            dist = inUnit(meters, unit);
+        }
         shownId = id;
         shownIndex = list[0];
         shownType = x.type;
         int type = icon, dir = 0, bar = 0, sides = 0;
         if (standardTurns) {
             // the phone's distance to this maneuver in meters (item 10), once it has sent one
-            int meters = u.nextStr == null || u.nextStr.equals("") ? -1 : u.distNext;
+            int meters = u.hasNext ? u.distNext : -1;
             int[] s = standard(x.type, x.side, x.junction, x.exit, icon, meters);
             type = s[0];
             dir = s[1];
@@ -401,6 +403,41 @@ final class CpTurns {
         sendHudDist(dist, unit);
         sendTrip(u);
         sendAhead(id, u);
+    }
+
+    /** the phone's formatted distance (item 11) as a number; NaN when absent or not a number */
+    static float parse(String s) {
+        if (s == null || s.length() == 0) return Float.NaN;
+        try {
+            float f = Float.parseFloat(s);
+            return Float.isInfinite(f) || f < 0f ? Float.NaN : f;
+        } catch (NumberFormatException e) {
+            return Float.NaN;
+        }
+    }
+
+    /**
+     * Meters to the maneuver when the phone sent no formatted distance (item 11): the route's
+     * (item 10) if it sent one, else the maneuver's own (its item 5) if that carried one, else
+     * -1 (wait). From ch0iiih/HMG_Phone_Projection_TBT's startupMeters (0.1.47, 0.1.57).
+     */
+    static int startupMeters(Update u, Maneuver x) {
+        if (u.hasNext && u.distNext >= 0) return u.distNext;
+        if (x.hasDistance && x.distance >= 0) return x.distance;
+        return -1;
+    }
+
+    /** the unit for meters in the owner's units (Settings): ft / mi with miles, else m / km, as the turns ahead */
+    static int meterUnit(int m, int owner) {
+        if (owner == Car.DISTANCE_MILES) return m < 161 ? Cluster.UNIT_FT : Cluster.UNIT_MI;
+        return m >= 1000 ? Cluster.UNIT_KM : Cluster.UNIT_M;
+    }
+
+    static float inUnit(int m, int unit) {
+        if (unit == Cluster.UNIT_FT) return m * 3.28084f;
+        if (unit == Cluster.UNIT_MI) return m / 1609f;
+        if (unit == Cluster.UNIT_KM) return m / 1000f;
+        return m;
     }
 
     /**
@@ -921,6 +958,8 @@ final class CpTurns {
         long eta, timeLeft;
         int[] list;
         boolean visible, lanesShown, supports;
+        /** the phone sent its meters to the next maneuver (item 10) */
+        boolean hasNext;
 
         /** as DiPO: a component id of 0 or less starts with nothing set (not even the defaults) */
         Update(int id, Iap2NotiMsg msg) {
@@ -940,6 +979,7 @@ final class CpTurns {
             distLeftStr = "";
             distLeftUnits = 0;
             distNext = 0;
+            hasNext = false;
             nextStr = "";
             nextUnits = 0;
             list = null;
@@ -956,6 +996,8 @@ final class CpTurns {
         void read(int id, Iap2NotiMsg msg) {
             Iap2NotiMsg.Iap2ObjGroup g = msg == null ? null : msg.getItemGroup();
             if (g == null) return;
+            int head = list == null || list.length == 0 ? -1 : list[0];
+            boolean next = false;
             for (int k = 0; k < g.getItemCnt(); k++) {
                 Iap2NotiMsg.Iap2ObjItem it = g.getObjItem(k);
                 int item = it.getItemId(), n = it.getItemObjCount();
@@ -983,7 +1025,11 @@ final class CpTurns {
                         int[] v = n > 0 ? it.getItemIntArray() : null;
                         if (v == null) break;
                         if (item == 7) distLeft = v[0];
-                        else if (item == 10) distNext = v[0];
+                        else if (item == 10) {
+                            distNext = v[0];
+                            hasNext = true;
+                            next = true;
+                        }
                         break;
                     }
                     case 3:
@@ -1027,6 +1073,14 @@ final class CpTurns {
                     }
                 }
             }
+            // the current maneuver changed (item 13) with no new meters to it: the old ones were the
+            // previous maneuver's, so they no longer count (else a new turn starts at the old
+            // turn's last few meters, near-turn already)
+            int now = list == null || list.length == 0 ? -1 : list[0];
+            if (now != head && !next) {
+                distNext = 0;
+                hasNext = false;
+            }
         }
     }
 
@@ -1035,6 +1089,8 @@ final class CpTurns {
         int index, type, distance, distUnits, side, junction, exit, linkedLane;
         String description, afterRoad, distStr;
         int[] angles;
+        /** a message carried its distance (item 5) */
+        boolean hasDistance;
         /** this update carried JunctionElementExitAngle (item 11): exit 0 is then straight on, not absent */
         boolean exitSent;
 
@@ -1050,6 +1106,7 @@ final class CpTurns {
             type = 0;
             afterRoad = "";
             distance = 0;
+            hasDistance = false;
             distStr = "";
             distUnits = 2;
             side = 0;
@@ -1092,7 +1149,10 @@ final class CpTurns {
                     }
                     case 6: {
                         int[] v = n > 0 ? it.getItemIntArray() : null;
-                        if (item == 5 && v != null) distance = v[0];
+                        if (item == 5 && v != null) {
+                            distance = v[0];
+                            hasDistance = true;
+                        }
                         break;
                     }
                     case 8: {

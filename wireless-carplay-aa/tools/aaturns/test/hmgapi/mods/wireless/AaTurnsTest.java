@@ -47,9 +47,10 @@ public final class AaTurnsTest {
         t.nextTurn("Main St", RIGHT, TURN, -1, 0);
         expect("no route yet: road name only", "road [Main St]");
         t.status(1);
+        expect("guidance active: the turn that came before it goes out, with no distance yet (not 0)",
+                "tbt 67 65535 90.0 -1.0 0 0 0 254 -2", "hud f201430000" + utf16("Main St"));
         t.nextTurn("Main St", RIGHT, TURN, -1, 0);
-        expect("right turn: turn, HUD list, HUD distance", "road [Main St]", "tbt 67 65535 90.0 0.0 0 0 0 32 0",
-                "hud f201430000" + utf16("Main St"), "2c 0 0 0 0 0 0 0 0 0");
+        expect("the same right turn again: turn, HUD list not resent", "road [Main St]", "tbt 67 65535 90.0 -1.0 0 0 0 254 -2");
         t.nextTurnDistance(320, 30, 200, MILES_P1);
         expect("0.2 mi: HUD list unchanged, not resent", "tbt 67 65535 90.0 0.2 0 0 2 32 0", "2c 2 2 0 0 0 0 0 0 0");
         t.nextTurnDistance(100, 10, 100, METERS);
@@ -99,6 +100,45 @@ public final class AaTurnsTest {
         expect("same destination: not resent");
         check("destination point kept", t.estPoint == 3);
 
+        // issue #70: Android Auto's destination maneuver is the last turn, not the arrival
+        final int DESTINATION = 19;
+        AaTurns ds = new AaTurns(new android.content.Context(), c, new Handler());
+        ds.status(1);
+        ds.nextTurn("Pine St", RIGHT, TURN, -1, 0);
+        ds.nextTurnDistance(9, 1, 29529, FEET);
+        c.calls.clear();
+        ds.nextTurn("Home", RIGHT, DESTINATION, -1, 0);
+        expect("destination on the right, just after a turn: its icon (113), not ARRIVED (3)",
+                "road [Home]", "tbt 113 65535 0.0 29.529 0 0 3 32 0", "hud f201710000" + utf16("Home"), "2c 3 0 29 0 0 0 0 0 0");
+        ds.nextTurnDistance(4828, 300, 3000, MILES_P1);
+        expect("destination 3 mi out: still its icon", "tbt 113 65535 0.0 3.0 0 0 2 32 0", "2c 2 0 3 0 0 0 0 0 0");
+        ds.nextTurnDistance(10, 1, 32808, FEET);
+        expect("destination 10 m out, standard turns off: still its icon (ARRIVED is only the car's own format)",
+                "tbt 113 65535 0.0 32.808 0 0 3 32 0", "2c 3 0 32 0 0 0 0 0 0");
+        ds.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        ds.nextTurn("Home", 0, DESTINATION, -1, 0);
+        expect("destination on the left 114, ahead 112, with its own text (not the last turn's road)",
+                "road [Home]", "tbt 114 65535 0.0 32.808 0 0 3 32 0", "hud f201720000" + utf16("Home"), "2c 3 0 32 0 0 0 0 0 0",
+                "road [Home]", "tbt 112 65535 0.0 32.808 0 0 3 32 0", "hud f201700000" + utf16("Home"), "2c 3 0 32 0 0 0 0 0 0");
+        AaTurns da = new AaTurns(new android.content.Context(), c, new Handler());
+        da.standardTurns = true;
+        da.status(1);
+        da.nextTurn("Pine St", RIGHT, TURN, -1, 0);
+        da.nextTurnDistance(9, 1, 29529, FEET);
+        c.calls.clear();
+        da.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        expect("standard turns: a new destination forgets the last turn's 9 m: its icon (114), not ARRIVED",
+                "road [Home]", "tbt 114 65535 0.0 29.529 0 0 3 0 0", "hud f201720000" + utf16("Home"), "2c 3 0 29 0 0 0 0 0 0");
+        da.nextTurnDistance(4828, 300, 3000, MILES_P1);
+        expect("standard turns: destination 3 mi out: its icon", "tbt 114 65535 0.0 3.0 0 0 2 0 0", "2c 2 0 3 0 0 0 0 0 0");
+        da.nextTurnDistance(15, 1, 49213, FEET);
+        expect("standard turns: destination within 20 m: ARRIVED (3)", "tbt 3 0 0.0 49.213 0 0 3 0 0", "2c 3 0 49 0 0 0 0 0 0");
+        da.nextTurn("Home", LEFT, DESTINATION, -1, 0);
+        expect("standard turns: the same destination again keeps its distance: still ARRIVED",
+                "road [Home]", "tbt 3 0 0.0 49.213 0 0 3 0 0", "2c 3 0 49 0 0 0 0 0 0");
+        da.status(2);
+        c.calls.clear();
+
         AaTurns d = new AaTurns(new android.content.Context(), c, new Handler());
         d.status(1);
         d.nextTurn("Start Rd", 0, 1, 0, 0);
@@ -132,8 +172,8 @@ public final class AaTurnsTest {
         d.nextTurn("Circle Dr", RIGHT, 64, 100, 13 | 2 << 8);
         d.nextTurnDistance(800, 0, 500, MILES | 0x200);
         d.nextTurn(null, 0, 67, 0, 1);
-        expect("a roundabout in the turns ahead: its exit icon and direction (99, 90), not 64 and the raw angle",
-                "list {1 99 90 [Circle Dr] [2] " + (800 / 1609f) + " 2}");
+        expect("a roundabout in the turns ahead: its exit icon and direction (99, 90), not 64 and the raw angle; the HUD list gets it",
+                "list {1 99 90 [Circle Dr] [2] " + (800 / 1609f) + " 2}", "hud f2024163" + "00" + utf16("Loop"));
         d.nextTurn("Hill Rd", RIGHT, 13, 300, 0);
         expect("roundabout, exit at 225: 104 (the car's own icon), not 103",
                 "road [Hill Rd]", "tbt 104 65535 225.0 -1.0 0 0 0 254 -2", "hud f201680000" + utf16("Hill Rd"));
@@ -160,7 +200,7 @@ public final class AaTurnsTest {
         d.nextTurn(null, 0, 67, 0, 3);
         expect("turns ahead: exit right 81, fork with no side 172, destination on the right 113 (none 64)",
                 "list {1 81 0 [Exit 5] [] " + (800 / 1609f) + " 2} {2 172 0 [Y] [] " + (1600 / 1609f) + " 2} {3 113 0 [Home] [] "
-                        + (3200 / 1609f) + " 2}");
+                        + (3200 / 1609f) + " 2}", "hud f202ac5100" + utf16("Split"));
         check("turns ahead: unknown, merge, depart: straight (65)",
                 AaTurns.aheadType(0, 0, -1) == 65 && AaTurns.aheadType(10, 0, -1) == 65 && AaTurns.aheadType(1, 0, -1) == 65);
         check("turns ahead: on-ramp right 173, left 174; ferry 176; name change left 70",
@@ -257,6 +297,8 @@ public final class AaTurnsTest {
         off.status(1);
         off.status(3);
         check("standard turns off: no Recalculating", oh.delayed == null);
+        routeState();
+        hudNextTurn();
         System.exit(fail);
     }
 
@@ -269,5 +311,83 @@ public final class AaTurnsTest {
     static void check(String what, boolean ok) {
         System.out.println((ok ? "ok    " : "FAIL  ") + what);
         if (!ok) fail = 1;
+    }
+
+    /**
+     * A route that ended leaves nothing behind for the next one on the same connection
+     * (ch0iiih's 0.1.56): its turn neither comes back with the next route's first distance
+     * nor stands in for its DEPART; and what came before the status goes out with it.
+     */
+    static void routeState() {
+        final int RIGHT = 2, LEFT = 1, TURN = 4, DEPART = 1, METERS = 1;
+        Car.unit = Car.DISTANCE_KM;
+        c = new Cluster();
+        AaTurns t = new AaTurns(new android.content.Context(), c, new Handler());
+        t.status(1);
+        t.nextTurn("First Rd", 0, DEPART, 0, 0);
+        t.nextTurn("Main St", RIGHT, TURN, -1, 0);
+        t.nextTurnDistance(300, 20, 300, METERS);
+        t.status(2);
+        c.calls.clear();
+        t.nextTurnDistance(150, 10, 150, METERS);
+        expect("route over: a distance alone sends nothing");
+        t.status(1);
+        expect("next route active, nothing of its own yet: nothing sent (not the last route's turn)");
+        t.nextTurnDistance(900, 60, 900, METERS);
+        expect("its first callback a distance: still nothing (no turn to put it on)");
+        t.nextTurn("Second Rd", 0, DEPART, 0, 0);
+        expect("its DEPART: the road as the destination line and the no-distance turn (not route 1's right turn and 300 m)",
+                "dest 0 [Second Rd]", "tbt 2 65535 0.0 -1.0 0 0 0 254 -2");
+        t.nextTurn("Oak Ave", LEFT, TURN, -1, 0);
+        expect("its first turn, distance not sent yet: no distance (not route 1's)", "road [Oak Ave]",
+                "tbt 70 65535 270.0 -1.0 0 0 0 254 -2", "hud f201460000" + utf16("Oak Ave"));
+
+        c = new Cluster();
+        AaTurns u = new AaTurns(new android.content.Context(), c, new Handler());
+        u.nextTurn("Oak Ave", LEFT, TURN, -1, 0);
+        u.nextTurnDistance(400, 30, 400, METERS);
+        u.nextTurnDistance(5000, 600, 0, 0x100 | 3);
+        expect("turn, distance and trip before guidance is active: the road name only", "road [Oak Ave]");
+        u.status(1);
+        check("guidance active: the turn with its distance, the HUD, and the trip go out at once",
+                c.calls.size() == 4 && c.calls.get(0).equals("tbt 70 65535 270.0 400.0 0 0 0 32 0")
+                        && c.calls.get(1).equals("hud f201460000" + utf16("Oak Ave")) && c.calls.get(2).equals("2c 0 0 400 0 0 0 0 0 0")
+                        && c.calls.get(3).startsWith("sub 5.0 0 1 "));
+        c.calls.clear();
+        u.status(1);
+        expect("active again (Android Auto repeats it): nothing resent");
+        Car.unit = Car.DISTANCE_MILES;
+    }
+
+    /**
+     * The HUD list's second icon, in the order the AA library sends a NavigationState: the
+     * current turn, its distance, then each turn ahead with its distance, then their end
+     * (recipe segment 0x12a8, 0x1146, 0x115e-0x1338, 0x116e). Before, the end only marked the
+     * next icon as sent, so it never reached the HUD; and every resend of the current turn
+     * (about every 1.3 s) dropped it.
+     */
+    static void hudNextTurn() {
+        final int RIGHT = 2, LEFT = 1, TURN = 4, METERS = 1;
+        Car.unit = Car.DISTANCE_KM;
+        c = new Cluster();
+        AaTurns t = new AaTurns(new android.content.Context(), c, new Handler());
+        t.status(1);
+        t.nextTurn("Main St", RIGHT, TURN, -1, 0);
+        t.nextTurnDistance(800, 60, 800, METERS);
+        c.calls.clear();
+        t.nextTurn("Oak Ave", LEFT, 64, 270, TURN);
+        t.nextTurnDistance(1200, 0, 1200, METERS | 0x200);
+        t.nextTurn(null, 0, 67, 0, 1);
+        expect("end of the turns ahead: the list, and the HUD list gets the next turn (70)",
+                "list {1 70 270 [Oak Ave] [0] 1.2 1}", "hud f202434600" + utf16("Main St"));
+        t.nextTurn("Main St", RIGHT, TURN, -1, 0);
+        t.nextTurnDistance(790, 59, 790, METERS);
+        expect("the same turn again, and its distance: the HUD list keeps the next turn (not resent without it)",
+                "road [Main St]", "tbt 67 65535 90.0 800.0 0 0 0 32 0", "2c 0 0 800 0 0 0 0 0 0",
+                "tbt 67 65535 90.0 790.0 0 0 0 32 0", "2c 0 0 790 0 0 0 0 0 0");
+        t.nextTurn("Oak Ave", LEFT, TURN, -1, 0);
+        expect("a new turn: the old next turn goes from the HUD list", "road [Oak Ave]",
+                "tbt 70 65535 270.0 790.0 0 0 0 32 0", "hud f201460000" + utf16("Oak Ave"), "2c 0 0 790 0 0 0 0 0 0");
+        Car.unit = Car.DISTANCE_MILES;
     }
 }

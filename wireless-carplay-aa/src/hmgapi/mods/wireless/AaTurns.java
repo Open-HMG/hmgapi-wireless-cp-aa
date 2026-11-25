@@ -63,9 +63,17 @@ final class AaTurns {
     // the next turn
     int event, turnSide, turnAngle, turnNumber, displayType, direction, unit;
     String road;
-    float distance;
+    /** to the next turn, in unit; -1: none yet (the cluster's no-distance form, not 0) */
+    float distance = -1f;
     int meters = -1;
     boolean navLive;
+    /**
+     * A turn came in (and went to the cluster, or would have before guidance was active), for
+     * this route: sent again when guidance becomes active, forgotten when the route ends.
+     */
+    boolean hasTurn;
+    /** Android Auto's side for the turn, before U_TURN's default: whether a resent turn is the same one */
+    int rawSide;
     /**
      * The roundabout being guided through: the exit icon and direction its
      * ROUNDABOUT_ENTER_AND_EXIT gave, kept for the ROUNDABOUT_EXIT Android Auto sends once the
@@ -90,6 +98,8 @@ final class AaTurns {
     int lastUsm = -2;
     // HUD turn list (what was sent last)
     int hudType = -1, hudNext;
+    /** the next turn's icon from the last turns ahead, and whether it's for the current turn */
+    int nextIcon;
     boolean hudFresh;
     String hudRoad, laneKey;
     // the turns ahead (index 0..2)
@@ -149,10 +159,14 @@ final class AaTurns {
             rerouteShown = false;
             handler.removeCallbacks(rerouteShow);
         }
-        hudFresh = false;
+        // Android Auto sends the same maneuver again about every 1.3 s: the next turn's icon
+        // stays for it, and goes only with a new maneuver
+        if (road == null || ev != event || side != rawSide || angle != turnAngle || !road.equals(str)) hudFresh = false;
         boolean first = road == null;
+        int was = event;
         event = ev;
         road = str;
+        rawSide = side;
         turnSide = side;
         turnAngle = angle;
         turnNumber = number;
@@ -185,7 +199,15 @@ final class AaTurns {
                 setRoundaboutType(ev, turnSide, turnAngle);
                 break;
             case DESTINATION:
-                displayType = 3;
+                // the last maneuver, not the arrival (issue #70: "Arrived" miles out): the
+                // destination icon on its side, as CarPlay's. ARRIVED (3) comes only from
+                // standard(), within 20 m, so a new destination forgets the previous turn's
+                // last distance until Android Auto sends its own (ch0iiih's 0.1.82)
+                if (was != DESTINATION) meters = -1;
+                // its text, not the last turn's road (ch0iiih's 0.1.84)
+                cluster.crossroadName(road == null ? "" : road);
+                displayType = side == RIGHT ? DEST_RIGHT : side == LEFT ? DEST_LEFT : DEST_AHEAD;
+                direction = 0;
                 break;
             case UNKNOWN:
                 displayType = 65;   // straight: 64 is the cluster's spinner
@@ -195,6 +217,7 @@ final class AaTurns {
                 logTurn();
                 return;   // ROUNDABOUT_ENTER, FERRY_TRAIN: not for the cluster
         }
+        hasTurn = true;
         logTurn();
         sendTurn();
     }
@@ -249,11 +272,18 @@ final class AaTurns {
 
     void status(int s) {
         if (s == 1 || s == STATUS_REROUTING) {   // active, rerouting
+            boolean starting = !navLive;
             navLive = true;
             if (s == STATUS_REROUTING) {
                 reroute();
             } else if (rerouting) {
                 endReroute();
+            }
+            // the turn and trip can come before the status: they go out now, not at Android
+            // Auto's next resend (ch0iiih's 0.1.56)
+            if (starting) {
+                if (hasTurn) sendTurn();
+                sendRemain();
             }
             return;
         }
@@ -268,6 +298,10 @@ final class AaTurns {
         estPoint = 0;
         roundaboutType = -1;
         release();
+        // the route is over: its turn mustn't come back with the next route's first distance
+        // (or as its DEPART), and the turns ahead go with it
+        stop();
+        for (int k = 0; k < 3; k++) aheadOk[k] = false;
     }
 
     /**
@@ -302,10 +336,13 @@ final class AaTurns {
         if (shown && road != null) sendTurn();
     }
 
-    /** The car's navigation took over (focus native): forget the turn. */
+    /** The car's navigation took over (focus native), or the route ended: forget the turn. */
     void stop() {
+        hasTurn = false;
         event = 0;
         road = null;
+        rawSide = 0;
+        distance = -1f;
         turnSide = 0;
         turnAngle = 0;
         turnNumber = 0;
@@ -329,6 +366,7 @@ final class AaTurns {
 
     void sendTurn() {
         if (!navLive || rerouteShown) return;   // "Recalculating..." stays until the new route's turn
+        if (!hasTurn) return;   // a distance before this route's first turn: nothing to put it on
         int type = displayType, dir = direction, bar = 32, barErr = 0, sides = 65535;
         if (distance < 0f) {
             bar = 254;
@@ -595,10 +633,10 @@ final class AaTurns {
         if (type < 64) return;
         int next = 0;
         if (aheadOk[0]) {
-            next = aheadType(aheadEv[0], aheadSide[0], aheadAng[0]);
+            next = nextIcon = aheadType(aheadEv[0], aheadSide[0], aheadAng[0]);
             hudFresh = true;
         } else if (hudFresh) {
-            next = hudNext;
+            next = nextIcon;
         }
         String r = road == null ? "" : road;
         if (hudType == type && hudNext == next && r.equals(hudRoad)) return;
@@ -640,6 +678,7 @@ final class AaTurns {
         cluster.laneInfo(lanes);
         hudType = -1;
         hudNext = 0;
+        nextIcon = 0;
         hudFresh = false;
         hudRoad = null;
         cluster.turnListNew(new byte[] { HUD_LIST });
@@ -764,11 +803,16 @@ final class AaTurns {
             list[i++] = t;
         }
         cluster.turnList(list);
-        if (aheadOk[0]) {
-            hudNext = aheadType(aheadEv[0], aheadSide[0], aheadAng[0]);
+        // the HUD list gets the next turn now: the library sends the current turn and its
+        // distance before the turns ahead, so nothing else would send it (hudNext is what was
+        // sent, and stays so until sendHudList sends)
+        boolean first = aheadOk[0];
+        if (first) {
+            nextIcon = aheadType(aheadEv[0], aheadSide[0], aheadAng[0]);
             hudFresh = true;
         }
         for (int k = 0; k < 3; k++) aheadOk[k] = false;
+        if (first && navLive && hasTurn && !rerouteShown) sendHudList();
     }
 
     // ---- remaining distance and arrival time
