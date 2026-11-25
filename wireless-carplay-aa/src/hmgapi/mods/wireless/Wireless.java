@@ -101,6 +101,7 @@ public final class Wireless extends ModEntry {
     public void appLoaded(final ModContext mod, LoadedApp app) {
         if (NAVIGATION.equals(app.packageName)) navigation(mod, app);
         if (IAP2.equals(app.packageName)) iap2(mod, app);
+        if (GPM.equals(app.packageName) && mod.settingBoolean("aa_developer_mode", false)) AaDeveloperMode.install(mod, app);
         if (GPM.equals(app.packageName) && mod.settingBoolean("usb_drives", true)) usbDrives(mod, app);
         if (GPM.equals(app.packageName) && mod.settingBoolean("tbt", true)) gpmTurnByTurn(mod, app);
         if (BTSETTINGS.equals(app.packageName) && mod.settingBoolean("menu", true)) phoneProjectionMenu(mod, app);

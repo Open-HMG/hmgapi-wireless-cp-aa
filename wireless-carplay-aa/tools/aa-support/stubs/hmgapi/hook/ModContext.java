@@ -12,6 +12,7 @@ public final class ModContext {
     public final List<String> natives = new ArrayList<String>();
     public final List<String> logs = new ArrayList<String>();
     public int cpStarts;
+    public boolean enabled() { return true; }
     public boolean settingBoolean(String key, boolean fallback) {
         return settings.containsKey(key) ? settings.get(key) : fallback;
     }
