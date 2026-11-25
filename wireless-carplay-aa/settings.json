@@ -74,10 +74,10 @@
     {
       "key": "aa_developer_mode",
       "type": "toggle",
-      "default": true,
+      "default": false,
       "title": "Android Auto developer mode",
       "apply": "restart",
-      "description": "Identify as Google's Desktop Head Unit so Android Auto can run apps intended for developer testing, following aa-proxy-rs. App availability also depends on your phone and Android Auto version. Takes effect when the head unit restarts. If the receiver is incompatible, its normal identity is used."
+      "description": "Disabled by default. Identify as Google's Desktop Head Unit so Android Auto can run apps intended for developer testing. App availability also depends on your phone and Android Auto version. Takes effect when the head unit restarts. If the receiver is incompatible, its normal identity is used."
     },
     {
       "key": "aa_firewall",

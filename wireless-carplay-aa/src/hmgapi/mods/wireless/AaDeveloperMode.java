@@ -30,13 +30,17 @@ final class AaDeveloperMode {
             // A direct Bridge hook needs the enable/settings checks normally supplied
             // by ModContext's mapped hook guard; keep them on every invocation.
             Bridge.hookMethod(handoff.method, new MethodHook() {
-                private boolean reportedFailure;
+                private boolean reportedSuccess, reportedFailure;
                 @Override protected void beforeHookedMethod(Param p) {
-                    if (!mod.enabled() || !mod.settingBoolean("aa_developer_mode", true) || p.args[0] == null) return;
+                    if (!mod.enabled() || !mod.settingBoolean("aa_developer_mode", false) || p.args[0] == null) return;
                     try {
                         // Publish only a complete copy. Never mutate the receiver's
                         // saved identity, even if reflection fails midway through.
                         p.args[0] = handoff.copy(p.args[0]);
+                        if (!reportedSuccess) {
+                            reportedSuccess = true;
+                            mod.log("Android Auto: developer identity applied (Google Desktop Head Unit)");
+                        }
                     } catch (Exception e) {
                         if (!reportedFailure) {
                             reportedFailure = true;
@@ -85,8 +89,9 @@ final class AaDeveloperMode {
             for (Method m : receiver.getDeclaredMethods()) {
                 if (!Modifier.isNative(m.getModifiers()) || Modifier.isStatic(m.getModifiers())
                         || m.getReturnType() != void.class || m.getParameterTypes().length != 1) continue;
-                Class<?> info = m.getParameterTypes()[0];
-                if (info.getDeclaringClass() != receiver) continue;
+                // Do not require parameter.getDeclaringClass() == receiver. Some
+                // stock Dalvik classes have a '$' binary name but omit the optional
+                // InnerClasses annotation, so reflection reports no declaring class.
                 Handoff candidate;
                 try { candidate = new Handoff(m); }
                 catch (ReflectiveOperationException incompatible) { continue; }

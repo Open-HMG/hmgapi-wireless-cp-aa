@@ -23,7 +23,6 @@ public final class AaSupportTest {
 
     private static ModContext enabled() {
         ModContext mod = new ModContext();
-        mod.settings.put("aa_developer_mode", false);
         // An existing owner's saved true must not bypass native compatibility.
         mod.settings.put("tbt", true);
         mod.settings.put("tbt_standard", true);

@@ -14,4 +14,3 @@ javac --release 8 -Xlint:-options -nowarn -cp "$ANDROID_JAR" -d "$CP" \
     ../../src/hmgapi/mods/wireless/AaDeveloperMode.java \
     ../../src/hmgapi/mods/wireless/Wireless.java
 java -cp "$CP:$ANDROID_JAR" hmgapi.mods.wireless.AaSupportTest "$@"
-java -cp "$CP:$ANDROID_JAR" hmgapi.mods.wireless.AaDeveloperModeTest

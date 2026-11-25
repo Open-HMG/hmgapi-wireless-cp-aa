@@ -1,11 +1,7 @@
 package hmgapi.hook;
 
 public final class Points {
-    public static Class<?> receiverClass;
-    public static Class<?> cls(ClassLoader cl, String point) {
-        if ("gpm.receiver".equals(point) && receiverClass != null) return receiverClass;
-        throw new IllegalArgumentException("unmapped class: " + point);
-    }
+    public static Class<?> cls(ClassLoader cl, String point) { throw new IllegalArgumentException(point); }
     public static final Object IMAGE = new Object(), ENUM = new Object();
     public static final int FOCUS_NATIVE = 17;
     public static final java.util.Map<Object, Object> receivers = new java.util.IdentityHashMap<Object, Object>();
