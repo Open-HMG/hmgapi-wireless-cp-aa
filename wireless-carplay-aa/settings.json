@@ -42,6 +42,14 @@
       "description": "With \"Turns in the car's own format\" on: near a turn, the cluster draws the roads of the intersection around Android Auto's arrow, taken from the car navigation's own map, since Android Auto sends no junction shape. Only where the map's junction at the phone's distance matches the turn unambiguously; anywhere else the plain arrow, as before. Only on navigation engine builds the mod knows (so far the US Ioniq 5's on 260507). It calls into the navigation's engine: if the navigation or the AR HUD misbehaves, turn it off and send the log. Takes effect when the head unit restarts."
     },
     {
+      "key": "tbt_lane_side_streets",
+      "type": "toggle",
+      "default": false,
+      "title": "Android Auto: the intersection's side streets from the lanes (test)",
+      "apply": "restart",
+      "description": "With \"Turns in the car's own format\" on: near a turn that comes with lanes, the cluster draws the intersection from Android Auto's lanes: a road for each way they point (left, straight, right, slight, sharp), and the arrow pointing the way the recommended lane goes when Maps' instruction and its lanes disagree. Ahead of the car's map (tbt_map_side_streets), which is used for turns without lanes. Lanes show only the roads a lane may turn into, so a road nobody may enter (a one-way street, a banned left) isn't drawn, and turns without lanes keep the plain arrow unless the map has them. Takes effect when the head unit restarts."
+    },
+    {
       "key": "bridge",
       "type": "toggle",
       "default": true,

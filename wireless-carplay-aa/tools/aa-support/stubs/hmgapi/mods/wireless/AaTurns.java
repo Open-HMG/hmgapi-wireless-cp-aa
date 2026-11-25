@@ -7,6 +7,7 @@ final class AaTurns {
     boolean standardTurns;
     interface Junctions { int sides(int id, int meters, int angle); void close(); }
     Junctions junctions;
+    boolean laneSideStreets;
     AaTurns(android.content.Context c, hmgapi.hook.Cluster cluster, android.os.Handler h) { instances.add(this); }
     void nextTurn(String road, int side, int event, int angle, int number) {
         calls.add("turn " + road + " " + side + " " + event + " " + angle + " " + number);

@@ -258,6 +258,7 @@ public final class AaTurnsTest {
         off.status(3);
         check("standard turns off: no Recalculating", oh.delayed == null);
         mapSideStreets();
+        laneSideStreets();
         System.exit(fail);
     }
 
@@ -317,6 +318,103 @@ public final class AaTurnsTest {
                         && AaTurns.junctionAngle(AaTurns.OFF_RAMP, AaTurns.RIGHT) == AaTurns.NO_ANGLE
                         && AaTurns.junctionAngle(AaTurns.U_TURN, AaTurns.LEFT) == AaTurns.NO_ANGLE
                         && AaTurns.junctionAngle(AaTurns.TURN, AaTurns.UNSPECIFIED) == AaTurns.NO_ANGLE);
+    }
+
+    /** tbt_lane_side_streets: a TURN's intersection from its lanes, the arrow following them */
+    static void laneSideStreets() {
+        final int[] map = { 0 };
+        AaTurns j = new AaTurns(new android.content.Context(), c, new Handler());
+        j.standardTurns = true;
+        j.laneSideStreets = true;
+        j.status(1);
+        // left | straight | right (recommended) + straight, as the library sends them
+        String cross = "03" + "01070000" + "01010000" + "02030100";
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn(cross, 0, 34, 0, 0);
+        j.nextTurn("Oak Ave", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        c.calls.clear();
+        j.nextTurnDistance(300, 25, 186, AaTurns.MILES_P1);
+        check("lane diagram: lanes before the turn: left, ahead and right (0x811 = 2065): " + c.calls,
+                c.calls.toString().contains("tbt 13 2065 90.0 0.186 "));
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Pine St", AaTurns.LEFT, AaTurns.TURN, -1, 0);
+        j.nextTurn("02" + "02070000" + "01010000", 0, 34, 0, 0);
+        c.calls.clear();
+        j.nextTurnDistance(200, 20, 124, AaTurns.MILES_P1);
+        check("lane diagram: lanes after the turn: left and ahead (0x801 = 2049): " + c.calls,
+                c.calls.toString().contains("tbt 13 2049 270.0 "));
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Elm St", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        c.calls.clear();
+        j.nextTurnDistance(200, 20, 124, AaTurns.MILES_P1);
+        check("lane diagram: a step message without lanes doesn't get the last one's: 0: " + c.calls,
+                c.calls.toString().contains("tbt 13 0 90.0 "));
+        j.nextTurn("02" + "02070000" + "01010000", 0, 34, 0, 0);
+        j.nextTurnDistance(190, 19, 118, AaTurns.MILES_P1);
+        j.nextTurn("Ash St", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        c.calls.clear();
+        j.nextTurnDistance(180, 18, 112, AaTurns.MILES_P1);
+        check("lane diagram: lanes from before the last distance aren't the next turn's either: 0: " + c.calls,
+                c.calls.toString().contains("tbt 13 0 90.0 "));
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Birch Rd", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        j.nextTurn("02" + "01010000" + "02020000", 0, 34, 0, 0);
+        c.calls.clear();
+        j.nextTurnDistance(150, 15, 93, AaTurns.MILES_P1);
+        check("lane diagram: \"turn right\" with only a slight-right lane: ahead and slight right (5), the arrow at 45: " + c.calls,
+                c.calls.toString().contains("tbt 13 5 45.0 "));
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Cedar Ln", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        j.nextTurn("02" + "01070000" + "01010000", 0, 34, 0, 0);
+        c.calls.clear();
+        j.nextTurnDistance(150, 15, 93, AaTurns.MILES_P1);
+        check("lane diagram: no lane goes the turn's way: the lanes' roads plus the turn's (2065): " + c.calls,
+                c.calls.toString().contains("tbt 13 2065 90.0 "));
+        j.junctions = new AaTurns.Junctions() {
+            @Override
+            public int sides(int id, int meters, int angle) {
+                return map[0];
+            }
+        };
+        map[0] = 0x11;
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Dogwood Dr", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        j.nextTurn(cross, 0, 34, 0, 0);
+        c.calls.clear();
+        j.nextTurnDistance(120, 12, 75, AaTurns.MILES_P1);
+        check("lane diagram: the lanes come before the map: " + c.calls, c.calls.toString().contains("tbt 13 2065 90.0 "));
+        j.nextTurn("S 2 0a00", 0, 33, 0, 0);
+        j.nextTurn("Dogwood Dr", AaTurns.RIGHT, AaTurns.TURN, -1, 0);
+        c.calls.clear();
+        j.nextTurnDistance(100, 10, 62, AaTurns.MILES_P1);
+        check("lane diagram: no lanes, the map's answer (0x11 = 17): " + c.calls, c.calls.toString().contains("tbt 13 17 90.0 "));
+        j.nextTurn(cross, 0, 34, 0, 0);
+        j.laneSideStreets = false;
+        map[0] = 0;
+        c.calls.clear();
+        j.nextTurnDistance(90, 9, 56, AaTurns.MILES_P1);
+        check("lane diagram: setting off: 0, the arrow as the instruction: " + c.calls, c.calls.toString().contains("tbt 13 0 90.0 "));
+
+        lane("a right with slight-right and right lanes: both roads, plus ahead; out at the right",
+                AaTurns.laneDiagram("02" + "01020000" + "01030100", 90), 1 | 1 << 2 | 1 << 4, 90);
+        lane("a right where the recommended lane is the slight right: out at 45",
+                AaTurns.laneDiagram("03" + "01030000" + "02020000" + "01010000", 90), 1 | 1 << 2 | 1 << 4, 45);
+        lane("straight on with left and right lanes: all three, out ahead",
+                AaTurns.laneDiagram("03" + "01070000" + "02010000" + "01030000", 0), 0x811, 0);
+        lane("a sharp left with a straight lane: behind-left and ahead",
+                AaTurns.laneDiagram("02" + "02060000" + "01010000", -135), 1 | 1 << 9, -135);
+        check("laneDiagram: one road only, or a U-turn arrow besides: none",
+                AaTurns.laneDiagram("01" + "02030000", 90) == null && AaTurns.laneDiagram("02" + "01050000" + "02030000", 90) == null);
+        check("laneDiagram: no lanes, a bad string, no angle: none",
+                AaTurns.laneDiagram(null, 90) == null && AaTurns.laneDiagram("00", 90) == null && AaTurns.laneDiagram("02zz", 90) == null
+                        && AaTurns.laneDiagram("02" + "01030000", 90) == null && AaTurns.laneDiagram(cross, AaTurns.NO_ANGLE) == null);
+        check("roadBit: ahead 1, right 0x10, left 0x800, back 0",
+                AaTurns.roadBit(0) == 1 && AaTurns.roadBit(90) == 0x10 && AaTurns.roadBit(-90) == 0x800 && AaTurns.roadBit(180) == 0);
+    }
+
+    static void lane(String what, int[] got, int sides, int out) {
+        boolean ok = got != null && got[0] == sides && got[1] == out;
+        check("laneDiagram: " + what + (ok ? "" : " (got " + (got == null ? "none" : "0x" + Integer.toHexString(got[0]) + " out " + got[1]) + ")"), ok);
     }
 
     static void stdCase(String what, int ev, int side, int icon, int iconDir, int m, String want) {
