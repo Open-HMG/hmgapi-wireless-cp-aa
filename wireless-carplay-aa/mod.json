@@ -475,6 +475,9 @@
       "libCarPlayUtils.so": [
         "recipes/carplay-utils-converter.recipe"
       ],
+      "libExSLNavi.so": [
+        "recipes/navi-side-streets-caa8d4c2.recipe"
+      ],
       "libiap2session.so": [
         "recipes/carplay-identification-fc7.recipe"
       ]

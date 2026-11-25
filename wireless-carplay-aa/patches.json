@@ -197,6 +197,12 @@
       "path": "/system/lib/libcarplaylog.so",
       "src": "files/libcarplaylog.so",
       "mode": "644"
+    },
+    {
+      "type": "add",
+      "path": "/system/lib/libwlnavigraph.so",
+      "src": "files/libwlnavigraph.so",
+      "mode": "644"
     }
   ]
 }
