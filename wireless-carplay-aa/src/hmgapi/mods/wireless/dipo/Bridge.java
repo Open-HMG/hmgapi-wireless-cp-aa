@@ -3,6 +3,7 @@ package hmgapi.mods.wireless.dipo;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiConfiguration;
 import android.os.Handler;
 import android.os.HandlerThread;
 
@@ -81,6 +82,9 @@ final class Bridge {
     /** the serial the CarPlay channel's session was handed over with (a re-attach asks with the same) */
     static volatile String sCpSerial;
     static final Reattach sReattach = new Reattach(new ReattachHost());
+    /** the attach again once the hotspot's interface is back (a USB Wi-Fi adapter plugged in late, or power-cycled) */
+    static final WifiWait sWifiWait = new WifiWait(new WifiHost());
+    static final String WIFI_IFACE = "/sys/class/net/wlan0";
     static ClassLoader cl;
     static Context context;
     private static Handler sHandler;
@@ -197,6 +201,85 @@ final class Bridge {
         }, SPP_CONNECT_DELAY_MS);
     }
 
+    /**
+     * Is hostapd running? The framework can say "on in mode 2" without an access point: with a USB
+     * adapter it did so the moment the adapter's interface appeared, and nothing was broadcasting.
+     * If /proc can't be read at all, true: the framework is believed, as before.
+     */
+    static boolean hostapdRunning() {
+        String[] pids = new java.io.File("/proc").list();
+        if (pids == null) return true;
+        boolean read = false;
+        for (String p : pids) {
+            if (p.length() == 0 || !Character.isDigit(p.charAt(0))) continue;
+            java.io.FileInputStream in = null;
+            try {
+                in = new java.io.FileInputStream("/proc/" + p + "/cmdline");
+                byte[] b = new byte[64];
+                int n = in.read(b);
+                read = true;
+                if (n > 0 && new String(b, 0, n).contains("hostapd")) return true;
+            } catch (Throwable ignored) {
+                // the process ended, or isn't readable
+            } finally {
+                try {
+                    if (in != null) in.close();
+                } catch (Throwable ignored) {
+                    // closing a file we only read
+                }
+            }
+        }
+        return !read;
+    }
+
+    /** the framework's idea of whether the hotspot is on (false if it has no such call) */
+    static boolean apEnabled(Class<?> k, Object wifi) {
+        try {
+            return (Boolean) k.getMethod("isWifiApEnabled").invoke(wifi);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** WifiManager.getWifiApState(): 10 disabling, 11 disabled, 12 enabling, 13 enabled, 14 failed (13 or 11 from isWifiApEnabled if it can't be read) */
+    static int apState(Class<?> k, Object wifi) {
+        try {
+            return (Integer) k.getMethod("getWifiApState").invoke(wifi);
+        } catch (Throwable t) {
+            return apEnabled(k, wifi) ? 13 : 11;
+        }
+    }
+
+    /**
+     * The framework has the hotspot started, but hostapd isn't running although the Wi-Fi interface
+     * is there: turn it off (up to 5 s), so that HMG-API's projectionAp() starts it. Seen with a USB
+     * Wi-Fi adapter, whose interface comes and goes. A start asked for while the adapter is out
+     * leaves the hotspot "enabling" (started, never tethered), or it turns "enabled" the moment the
+     * interface appears, in mode 2 or in mode 0; nothing is broadcasting. projectionAp() believes
+     * "on in mode 2" (Open-HMG/HMG-API#386), and the framework ignores any other start until the
+     * hotspot has been turned off. A start asked for while it still turns off came up in mode 0
+     * (seen once), so the wait is for "disabled".
+     */
+    static void stopDeadHotspot(Context c) {
+        try {
+            if (!new java.io.File(WIFI_IFACE).exists()) return;   // no interface: a start can't work either
+            Object wifi = c.getSystemService(Context.WIFI_SERVICE);
+            if (wifi == null) return;
+            Class<?> k = wifi.getClass();
+            // a start that is under way gets 2 s to bring hostapd up
+            for (int i = 0; i < 10 && apState(k, wifi) == 12 && !hostapdRunning(); i++) Thread.sleep(200);
+            int was = apState(k, wifi), now = was;
+            if (was == 11 || hostapdRunning()) return;
+            Object conf = k.getMethod("getWifiApConfiguration").invoke(wifi);
+            k.getMethod("setWifiApEnabledForConnectivity", WifiConfiguration.class, boolean.class).invoke(wifi, conf, false);
+            for (int i = 0; i < 25 && (now = apState(k, wifi)) != 11 && now != 14; i++) Thread.sleep(200);
+            log("hotspot started (state " + was + ") but hostapd isn't running: turned off (state " + now + "), to be started again");
+        } catch (Throwable t) {
+            // no such call on this build, or the framework refused: projectionAp() does what it can
+            error("stopDeadHotspot", t);
+        }
+    }
+
     static void onSppUp(final String addr) {
         if (addr == null || sSession) return;
         sAddr = addr;
@@ -213,6 +296,7 @@ final class Bridge {
                         return;
                     }
                     // the projection AP for the iPhone to join: HMG-API's (the car may have turned it off since boot)
+                    stopDeadHotspot(c);
                     Wifi.projectionAp(c, "wireless-carplay-aa");
                     Intent i = new Intent(ACTION_ATTACH);
                     i.setPackage(IAP2_PKG);
@@ -221,6 +305,7 @@ final class Bridge {
                     i.putExtra("serial", addr);
                     c.sendBroadcast(i);
                     log("BT_ATTACHED sent for " + addr);
+                    if (wifiRetryEnabled()) sWifiWait.attached();
                 } catch (Throwable t) {
                     sSession = false;
                     error("onSppUp", t);
@@ -255,6 +340,7 @@ final class Bridge {
 
     static void onCpSessionStarted(int transport) {
         sCpWireless = transport == 1 && !sUsb;
+        if (sCpWireless) sWifiWait.reset();
         log("CarPlay session started transport=" + transport + " wireless=" + sCpWireless);
     }
 
@@ -296,6 +382,9 @@ final class Bridge {
             }
             if (client) sendDetach();
             if (client || wireless) onUsbGone();
+            // a session that ended before Bluetooth dropped leaves the old attach up, and nothing attaches again:
+            // watch the interface from here too (the watch was stopped when the session started)
+            if (wireless && sSession && wifiRetryEnabled()) sWifiWait.attached();
         } catch (Throwable t) {
             error("onCpSessionFinalized", t);
         }
@@ -566,8 +655,48 @@ final class Bridge {
         }
     }
 
+    static boolean wifiRetryEnabled() {
+        return !"0".equals(prop("persist.ev6.cpwl.wifiretry", "1"));
+    }
+
+    static final class WifiHost implements WifiWait.Host {
+        @Override
+        public void schedule(Runnable r, long delayMs) {
+            handler().postDelayed(r, delayMs);
+        }
+
+        @Override
+        public boolean ifaceThere() {
+            return new java.io.File(WIFI_IFACE).exists();
+        }
+
+        @Override
+        public boolean hotspotUp() {
+            return ifaceThere() && hostapdRunning();
+        }
+
+        @Override
+        public boolean pending() {
+            return sSession && !sCpWireless && !sCpClient && !sUsb;
+        }
+
+        /** as after a wireless session: the Bluetooth iAP2 session is dropped, and asked for again 3 s later if SPP is still up */
+        @Override
+        public void attachAgain(int n) {
+            sSession = false;
+            sendDetach();
+            onUsbGone();
+        }
+
+        @Override
+        public void log(String m) {
+            Bridge.log(m);
+        }
+    }
+
     static void onSppDown(String addr) {
         if (addr == null || !addr.equals(sAddr)) return;
+        sWifiWait.reset();
         if (sCpWireless) {
             sSession = false;
             startCpClient("bluetooth dropped during wireless CarPlay");
