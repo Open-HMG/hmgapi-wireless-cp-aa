@@ -5,7 +5,7 @@ car's own Wi-Fi hotspot.
 
 > **Turn-by-turn moved (from 3.0).** Your phone's directions on the instrument cluster
 > and HUD are now their own mod,
-> [Phone Turn-by-Turn](https://github.com/Open-HMG/hmgapi-projection-tbt), which works
+> [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmgapi-projection-tbt), which works
 > for wired phones too. Install it next to this one to keep them. Versions 2.x of this
 > mod still include turn-by-turn. **3.0 is set up but not released**, and hasn't been on
 > a car yet.
@@ -71,7 +71,7 @@ Open the mod in HMG-API to change its settings. Tap **Save settings** before
   and Canadian builds. USB drives and hubs can stay plugged in without
   triggering wired Android Auto.
 - **Turn-by-turn directions** on the cluster and HUD come from the
-  [Phone Turn-by-Turn](https://github.com/Open-HMG/hmgapi-projection-tbt) mod. With both
+  [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmgapi-projection-tbt) mod. With both
   installed, this mod keeps the iPhone's route guidance flowing after wireless CarPlay's
   Bluetooth-to-Wi-Fi handover. [How the two mods work together](docs/tbt-contract.md)
 - **Experimental: Park and reconnect** ends the wireless session when you park and leave so
