@@ -36,7 +36,7 @@ import hmgapi.hook.Points;
  * Now Playing ("now_playing", with the bridge): song, artist and album art on wireless
  * CarPlay, which DiPO only asks the phone for on USB (nowPlaying).
  *
- * Turn-by-turn is the projection-tbt mod's (Open-HMG hmgapi-projection-tbt), wired or
+ * Turn-by-turn is the projection-tbt mod's (AwsomeFox/hmg-api-turn-by-turn), wired or
  * wireless. On wireless, iAP2 moves from the Bluetooth session to the CarPlay channel and
  * the phone's route guidance subscription is lost with it, so this mod still asks the
  * phone for route guidance again after every handover and re-attach, and watches that it

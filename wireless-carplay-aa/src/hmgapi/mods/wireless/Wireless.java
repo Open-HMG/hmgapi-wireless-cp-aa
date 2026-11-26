@@ -16,7 +16,7 @@ import hmgapi.hook.Points;
 
 /**
  * The Wireless mod's hooks (the rest of the mod is file changes in patches.json). Turn-by-turn
- * on the cluster and HUD moved to its own mod, projection-tbt (Open-HMG hmgapi-projection-tbt),
+ * on the cluster and HUD moved to its own mod, projection-tbt (AwsomeFox/hmg-api-turn-by-turn),
  * which works for wired phones too; the two work together in DiPO (dipo/Dipo's header).
  *
  * Phone Projection menu (setting "menu"): with the wireless CarPlay/AA features
