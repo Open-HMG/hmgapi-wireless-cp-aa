@@ -121,6 +121,11 @@ final class Bridge {
         }
     }
 
+    /** a phone is attached through the bridge (iAP2 over Bluetooth, or its CarPlay session), and none is on USB */
+    static boolean wirelessAttached() {
+        return !sUsb && (sSession || sCpClient || sCpWireless);
+    }
+
     static boolean isOurs(Object listener) {
         return listener != null && listener == sBt;
     }

@@ -298,6 +298,23 @@ public final class Dipo {
         } else {
             log("DiPO: this car's map has no dipo.carplay.disable_bluetooth: Bluetooth isn't kept up for wireless CarPlay");
         }
+        // DipoService's resetUSB(): about 6 s after a CarPlay session starts DiPO power-cycles the USB port
+        // through the micom (requestVBusOffOn), part of the wired handshake. With the hotspot on a USB Wi-Fi
+        // adapter in that port, that drops the adapter and the session (HMG-API #372). Skipped only while the
+        // bridge has a phone attached over Bluetooth; a phone on USB gets DiPO's reset
+        // (persist.ev6.cpwl.usbreset=1: always DiPO's way). Optional, as above.
+        if (Points.has("dipo.service.reset_usb")) {
+            mod.hook(cl, "dipo.service.reset_usb", new MethodHook() {
+                @Override
+                protected void beforeHookedMethod(Param p) {
+                    if (!Bridge.wirelessAttached() || "1".equals(Bridge.prop("persist.ev6.cpwl.usbreset", "0"))) return;
+                    log("DiPO: USB port left powered for wireless CarPlay (resetUSB skipped)");
+                    p.setResult(null);
+                }
+            });
+        } else {
+            log("DiPO: this car's map has no dipo.service.reset_usb: DiPO's USB reset isn't skipped for wireless CarPlay");
+        }
         // DiPO's own wireless CarPlay (Hyundai's) stays off: the feature file is there for the other apps
         mod.hook(cl, "dipo.utils.is_support_wireless_carplay", new MethodHook() {
             @Override
