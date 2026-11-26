@@ -1,8 +1,14 @@
 # Wireless CarPlay + Android Auto for HMG-API
 
 Use wireless CarPlay and Android Auto on a compatible Gen5W head unit through the
-car's own Wi-Fi hotspot. The mod also brings experimental phone navigation (turn-by-turn) to the instrument
-cluster and head-up display (HUD) on compatible hardware and firmware.
+car's own Wi-Fi hotspot.
+
+> **Turn-by-turn moved (from 3.0).** Your phone's directions on the instrument cluster
+> and HUD are now their own mod,
+> [Phone Turn-by-Turn](https://github.com/Open-HMG/hmgapi-projection-tbt), which works
+> for wired phones too. Install it next to this one to keep them. Versions 2.x of this
+> mod still include turn-by-turn. **3.0 is set up but not released**, and hasn't been on
+> a car yet.
 
 [Download the mod](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases) ·
 [Confirmed cars](#confirmed-cars) ·
@@ -64,10 +70,10 @@ Open the mod in HMG-API to change its settings. Tap **Save settings** before
 - **Phone Projection** opens **Device Connections** from the settings menu on US
   and Canadian builds. USB drives and hubs can stay plugged in without
   triggering wired Android Auto.
-- **Experimental: Turn-by-turn directions** appear on the cluster and HUD where supported.
-  Android Auto guidance requires a matching firmware recipe. For an AR HUD, try
-  the optional **Turns in the car's own format (AR HUD arrow, distance bar)**
-  setting. [AR HUD behavior and test coverage](docs/ar-hud.md)
+- **Turn-by-turn directions** on the cluster and HUD come from the
+  [Phone Turn-by-Turn](https://github.com/Open-HMG/hmgapi-projection-tbt) mod. With both
+  installed, this mod keeps the iPhone's route guidance flowing after wireless CarPlay's
+  Bluetooth-to-Wi-Fi handover. [How the two mods work together](docs/tbt-contract.md)
 - **Experimental: Park and reconnect** ends the wireless session when you park and leave so
   calls and audio return to your phone. When you start the car, the head unit
   asks the last phone to reconnect. Pick another phone in **Device Connections**
@@ -88,10 +94,34 @@ Open the mod in HMG-API to change its settings. Tap **Save settings** before
   [Open a mod issue](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/issues/new/choose) ·
   [Export a Car Report](https://github.com/Open-HMG/HMG-API/wiki/Car-Report)
 
+## Hook points this mod is waiting for
+
+| For | Point | Where it stands |
+|---|---|---|
+| The USB port's power cycle a few seconds into a wireless CarPlay session (issue #372 in HMG-API) | `dipo.service.reset_usb` | [HMG-API #392](https://github.com/Open-HMG/HMG-API/pull/392), open |
+
 ## Contributing
 
 Build and test the mod, add hook points, or integrate another mod with the
 CarPlay identification API. [Contributor guide](CONTRIBUTING.md)
+
+## Credits
+
+- **[VysseCodes](https://github.com/VysseCodes)**: this mod,
+  [HMG-API](https://github.com/Open-HMG/HMG-API) and, before them,
+  [HMG Leafia Plus](https://github.com/VysseCodes/HMG-Leafia-Plus): the CarPlay Bluetooth
+  bridge, the Wi-Fi session and audio patches, and the audio converter.
+- **[xwtk](https://github.com/xwtk)**: [NEMESIS](https://github.com/xwtk/hmg_nemesis) and
+  its package *Enable Wireless Features* (`wireless.projection`), which the hotspot and
+  feature changes build on.
+- **[Isaac Wisdom](https://github.com/isaacwisdom)**: the shared CarPlay identity API,
+  CarPlay fixes and reviews.
+- **Bryan Lieberman, AwsomeFox, SafariForest, lemoyneiv, mantene, hwjang1, Weab-chan,
+  Narayan, Joshua Auger, Ian Fisher, DrTaru, Conor McBride** and everyone else in this
+  repository's history (`git shortlog -sn`), and the owners who tested builds and sent
+  Car Reports.
+- **[zpoon](https://github.com/zpoon)** ([Evergreen](https://github.com/zpoon/gen5w-Evergreen))
+  for reviews and fixes across Open-HMG.
 
 ## License
 
