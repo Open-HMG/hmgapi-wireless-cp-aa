@@ -255,6 +255,7 @@ final class Bridge {
 
     static void onCpSessionStarted(int transport) {
         sCpWireless = transport == 1 && !sUsb;
+        Dipo.wirelessUp(sCpClient || sCpWireless);
         log("CarPlay session started transport=" + transport + " wireless=" + sCpWireless);
     }
 
@@ -290,6 +291,7 @@ final class Bridge {
             boolean client = sCpClient, wireless = sCpWireless;
             sCpWireless = false;
             sCpClient = false;
+            Dipo.wirelessUp(false);
             sCpConnected = false;
             synchronized (sPendingIn) {
                 sPendingIn.clear();
@@ -323,6 +325,7 @@ final class Bridge {
     static void startCpClient(final String why) {
         if (sCpClient) return;
         sCpClient = true;
+        Dipo.wirelessUp(true);
         sCpConnected = false;
         final String addr = sAddr;
         sCpSerial = addr;

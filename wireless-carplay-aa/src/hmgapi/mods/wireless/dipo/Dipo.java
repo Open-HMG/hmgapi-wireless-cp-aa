@@ -12,13 +12,9 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 
 import com.broadcom.bt.hfdevice.hfbtcm.HfDeviceBTCMManager;
-import com.tcc.iap2.IIap2Listener;
 import com.tcc.iap2.IIap2Service;
-import com.tcc.iap2.Iap2ListenerInfo;
-import com.tcc.iap2.Iap2NotiMsg;
 
 import hmgapi.hook.Car;
-import hmgapi.hook.Cluster;
 import hmgapi.hook.LoadedApp;
 import hmgapi.hook.MethodHook;
 import hmgapi.hook.ModContext;
@@ -27,13 +23,6 @@ import hmgapi.hook.Points;
 /**
  * The Wireless mod in DiPO (the CarPlay app): its app part, linked against DiPO's
  * libraries (com.tcc.iap2, com.broadcom.bt). Wireless.appLoaded starts it.
- *
- * Turn-by-turn ("tbt"): DiPO's own route guidance manager only exists when the car's
- * stepofspec is 999 or more, and stays off (HMG-API never changes stepofspec). HMG-API
- * registers its own listener with the iAP2 server for route guidance (the server sends
- * those notifications to every listener that asks), and CpTurns sends them to the
- * cluster. DiPO still starts and stops the phone's route guidance itself when the
- * phone or the car takes turn-by-turn; a stop clears the HUD (hook on the iAP2 proxy).
  *
  * Native patches (in memory, the files stay stock): libCarPlayCore takes Wi-Fi sessions
  * ("bridge"); libCarPlayAudio offers AAC/Opus on Wi-Fi and libCarPlayUtils sends its
@@ -46,34 +35,51 @@ import hmgapi.hook.Points;
  *
  * Now Playing ("now_playing", with the bridge): song, artist and album art on wireless
  * CarPlay, which DiPO only asks the phone for on USB (nowPlaying).
+ *
+ * Turn-by-turn is the projection-tbt mod's (Open-HMG hmgapi-projection-tbt), wired or
+ * wireless. On wireless, iAP2 moves from the Bluetooth session to the CarPlay channel and
+ * the phone's route guidance subscription is lost with it, so this mod still asks the
+ * phone for route guidance again after every handover and re-attach, and watches that it
+ * flows (RgWatch). The two mods don't require each other; in DiPO they agree on
+ * (docs/tbt-contract.md):
+ *  - WIRELESS_UP: a system property of this process, "1" while a wireless CarPlay session
+ *    is up (Bridge), so the turn-by-turn mod doesn't take the handover's iAP2 disconnects
+ *    (components 4 and 5) for the phone leaving.
+ *  - TBT_UP: the turn-by-turn mod's, "1" while its route guidance listener runs. Without
+ *    it there is no route guidance to ask for or watch (Now Playing is still asked).
+ *  - RG_EVENT: its broadcast inside DiPO: "started" (it restarted route guidance),
+ *    "stopped" (DiPO stopped it) and "update" (it is flowing), for RgWatch.
+ *  - Route guidance restarts run on threads named OWN_THREADS…, so the turn-by-turn mod
+ *    can tell them from DiPO's own stop.
  */
 public final class Dipo {
     private Dipo() {}
 
     static final String IAP2_ACTION = "com.remote.service.IAP2SERVICE";
     static final String CP_FIRST_CONNECTED = "com.android.app.PhoneProjection.CP_FIRST_CONNECTED";
-    /** iAP2 listener type for route guidance (notifications 120, 121, 122) */
-    static final int LISTENER_ROUTE_GUIDANCE = 4096;
-    static final int RG_UPDATE = 120, RG_MANEUVER = 121, RG_LANES = 122;
     static final String[] RG_COMPONENTS = { "RouteGuidanceComponent0" };
+    /** set by this mod in this process: "1" while a wireless CarPlay session is up */
+    public static final String WIRELESS_UP = "hmgapi.wireless.carplay";
+    /** set by the turn-by-turn mod in this process: "1" while its route guidance listener runs */
+    public static final String TBT_UP = "hmgapi.tbt.carplay";
+    /** from the turn-by-turn mod, inside DiPO only: extra "event" = started, stopped or update */
+    public static final String RG_EVENT = "hmgapi.mods.tbt.CP_RG";
+    static final String RG_PERMISSION = "android.permission.BLUETOOTH_PRIVILEGED";
+    /** threads of HMG-API mods that restart route guidance themselves (the turn-by-turn mod skips their stops) */
+    public static final String OWN_THREADS = "hmgapi-cp-";
 
     static ModContext mod;
     static LoadedApp app;
     static volatile IIap2Service iap2;
-    static boolean tbt, bridge, nowPlaying;
+    static boolean bridge, nowPlaying;
     /** Now Playing asked again this long after the CarPlay channel session comes up */
     static final long NP_DELAY = 1500;
     static Handler npHandler;
     /** DiPO's iAP2 manager from the CarPlay channel session's connect (Now Playing asked again through it after a re-attach) */
     static volatile Object npManager;
-    static Handler turnsHandler;
-    static CpTurns turns;
-    static RgListener rg;
     /** asks for route guidance after every comp-5 ready, and the watchdog after each Start (RgWatch) */
     static RgWatch rgWatch;
     private static Handler rgHandler;
-    /** set while HMG-API itself calls the iAP2 server (its own route guidance restart) */
-    static final ThreadLocal<Boolean> OWN = new ThreadLocal<Boolean>();
     /** onSessionDetails' device id while it runs, and whether its address lookup came back empty */
     static final ThreadLocal<String> SESSION = new ThreadLocal<String>();
     static final ThreadLocal<Boolean> NO_ADDRESS = new ThreadLocal<Boolean>();
@@ -90,7 +96,6 @@ public final class Dipo {
     public static void start(ModContext m, LoadedApp a) {
         mod = m;
         app = a;
-        tbt = m.settingBoolean("tbt", true);
         bridge = m.settingBoolean("bridge", true);
         nowPlaying = bridge && m.settingBoolean("now_playing", true);
         CarPlayLog.on = m.settingBoolean("carplay_log", false);
@@ -101,18 +106,16 @@ public final class Dipo {
             m.nativePatch(a, "libCarPlayAudio.so");   // offer AAC and Opus on Wi-Fi
             m.nativePatch(a, "libCarPlayUtils.so");   // its AudioConverter calls go to libleafiaaac.so
         }
-        if (tbt) turnByTurn();
-        if (!tbt && !bridge) return;
+        if (!bridge) return;
         rgWatch();
-        if (bridge) bridge();
+        bridge();
         Intent i = new Intent(IAP2_ACTION);
         boolean bound = a.context.bindService(i, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder b) {
                 IIap2Service s = IIap2Service.Stub.asInterface(b);
                 iap2 = s;
-                if (tbt) registerRouteGuidance(s);
-                if (bridge) Bridge.onIap2Bound(s);
+                Bridge.onIap2Bound(s);
             }
 
             @Override
@@ -124,124 +127,31 @@ public final class Dipo {
         log("DiPO: iAP2 server " + (bound ? "binding" : "can't be bound"));
     }
 
-    private static void turnByTurn() {
-        if (Car.stepOfSpec() >= 999) {
-            log("CarPlay: stepofspec is 999 or more, DiPO's own turn-by-turn runs (HMG-API's stays off)");
-            tbt = false;
-            return;
-        }
-        Cluster c = Cluster.of(app.context);
-        if (c == null) {
-            tbt = false;
-            return;
-        }
-        HandlerThread t = new HandlerThread("hmgapi-cp-tbt");
-        t.start();
-        turnsHandler = new Handler(t.getLooper());
-        turns = new CpTurns(app.context, c, new Runnable() {
-            @Override
-            public void run() {
-                RgWatch w = rgWatch;
-                if (w != null) w.started();   // a Start of ours: watched
-                restartRouteGuidance();
-            }
-        });
-        turns.standardTurns = mod.settingBoolean("tbt_standard", false);
-        turns.sideStreets = turns.standardTurns && mod.settingBoolean("tbt_side_streets", false);
-        if (turns.standardTurns) log("CarPlay: turns in the car's own format near a maneuver (standard turns)"
-                + (turns.sideStreets ? ", with the iPhone's side streets" : ""));
-        rg = new RgListener();
-        mod.hook(app.classLoader, "dipo.iap2_proxy.stop_route_guidance", new MethodHook() {
-            @Override
-            protected void beforeHookedMethod(Param p) {
-                if (OWN.get() != null) return;
-                // logged every time (issue #24): a stop mid-route ends the phone's updates
-                log("CarPlay: DiPO stopped route guidance");
-                RgWatch w = rgWatch;
-                if (w != null) w.stopped();
-                post(new Runnable() {
-                    @Override
-                    public void run() {
-                        turns.stop();
-                    }
-                });
-            }
-        });
-        log("CarPlay: turn-by-turn to the cluster (HMG-API's route guidance listener)");
-    }
-
-    static void post(Runnable r) {
-        final Runnable run = r;
-        turnsHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    run.run();
-                } catch (Throwable x) {
-                    error("CarPlay turn-by-turn", x);
-                }
-            }
-        });
-    }
-
-    static void registerRouteGuidance(IIap2Service s) {
-        try {
-            Iap2ListenerInfo info = new Iap2ListenerInfo();
-            info.onSetSupportType(LISTENER_ROUTE_GUIDANCE);
-            info.onSetListenerName("HMGAPI_RG");
-            log("CarPlay: Iap2SvcInit(HMGAPI_RG, 0x1000) = " + s.Iap2SvcInit(rg, info));
-        } catch (Throwable t) {
-            error("CarPlay: route guidance listener", t);
-        }
-    }
-
-    /** after a source change: Stop, then Start, so the phone sends its whole current state (the build's HmgApiRgRestart) */
+    /**
+     * Stop, then Start, so the phone sends its whole current route guidance state again.
+     * Only from RgWatch's thread (named OWN_THREADS…): the turn-by-turn mod's hook on DiPO's
+     * stop skips stops made on such a thread.
+     */
     static void restartRouteGuidance() {
         IIap2Service s = iap2;
         if (s == null) return;
-        OWN.set(Boolean.TRUE);
         try {
             s.Iap2SvcStopRouteGuidanceUpdate(RG_COMPONENTS);
             Thread.sleep(200);
             s.Iap2SvcStartRouteGuidanceUpdate(RG_COMPONENTS, true, true);
         } catch (Throwable t) {
             // the session went away meanwhile
-        } finally {
-            OWN.remove();
         }
     }
 
-    /** HMG-API's iAP2 listener for route guidance: everything goes to CpTurns on its thread */
-    static final class RgListener extends IIap2Listener.Stub {
-        @Override
-        public void connected(int component, String serial) {}
+    /** the turn-by-turn mod's route guidance listener runs in this process */
+    static boolean tbtUp() {
+        return "1".equals(System.getProperty(TBT_UP));
+    }
 
-        @Override
-        public void disconnected(final int component) {
-            // as DiPO's listener: component 2 isn't a session, and the bridge's own sessions end while wireless CarPlay runs
-            if (component == 2 || (bridge && Bridge.dipoIgnoreDisconnect(component))) return;
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    turns.disconnected();
-                }
-            });
-        }
-
-        @Override
-        public void notify(final int what, int a1, int a2, final Iap2NotiMsg msg) {
-            if ((what != RG_UPDATE && what != RG_MANEUVER && what != RG_LANES) || msg == null) return;
-            RgWatch w = rgWatch;
-            if (w != null && what != RG_LANES) w.update();
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    if (what == RG_UPDATE) turns.routeGuidance(msg);
-                    else if (what == RG_MANEUVER) turns.maneuver(msg);
-                    else turns.lanes(msg);
-                }
-            });
-        }
+    /** Bridge: a wireless CarPlay session came up or ended (for the turn-by-turn mod) */
+    static void wirelessUp(boolean up) {
+        System.setProperty(WIRELESS_UP, up ? "1" : "0");
     }
 
     private static void bridge() {
@@ -398,22 +308,27 @@ public final class Dipo {
 
     /**
      * After a re-attach of the CarPlay channel's iAP2 session (Bridge, Reattach): the phone is
-     * asked for route guidance (Stop, then Start, as a source change does) and Now Playing again.
+     * asked for route guidance (Stop, then Start, as a source change does; only with the
+     * turn-by-turn mod here) and Now Playing again.
      */
     static void askAgain() {
-        if (tbt && turnsHandler != null) {
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    restartRouteGuidance();
-                }
-            });
-        }
+        restartOnRgThread();
         if (nowPlaying && npHandler != null) nowPlaying(npManager, true);
     }
 
+    private static void restartOnRgThread() {
+        Handler h = rgHandler;
+        if (h == null || !tbtUp()) return;
+        h.post(new Runnable() {
+            @Override
+            public void run() {
+                restartRouteGuidance();
+            }
+        });
+    }
+
     private static void rgWatch() {
-        HandlerThread t = new HandlerThread("hmgapi-cp-rg");
+        HandlerThread t = new HandlerThread(OWN_THREADS + "rg");
         t.start();
         rgHandler = new Handler(t.getLooper());
         rgWatch = new RgWatch(new RgWatch.Host() {
@@ -440,21 +355,27 @@ public final class Dipo {
 
             @Override
             public void restart() {
-                if (tbt && turnsHandler != null) {
-                    post(new Runnable() {
-                        @Override
-                        public void run() {
-                            restartRouteGuidance();
-                        }
-                    });
-                }
+                restartOnRgThread();
             }
 
             @Override
             public void log(String m) {
                 Dipo.log("CarPlay: " + m);
             }
-        }, tbt);
+        }, tbtUp());
+        // the turn-by-turn mod's word on route guidance (it may start after this mod: any word turns the watch on)
+        app.context.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                RgWatch w = rgWatch;
+                String e = i.getStringExtra("event");
+                if (w == null || e == null) return;
+                w.watch(true);
+                if ("update".equals(e)) w.update();
+                else if ("started".equals(e)) w.started();
+                else if ("stopped".equals(e)) w.stopped();
+            }
+        }, new IntentFilter(RG_EVENT), RG_PERMISSION, rgHandler);
     }
 
     /** Bridge: the CarPlay channel's session (RgWatch) */

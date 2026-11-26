@@ -52,8 +52,8 @@ final class RgWatch {
     static final long[] CHECK_MS = { 3000, 7000, 15000, 30000 };
 
     private final Host host;
-    /** with turn-by-turn off there's no route guidance to watch (asks still ask Now Playing) */
-    private final boolean watch;
+    /** without the turn-by-turn mod there's no route guidance to watch (asks still ask Now Playing) */
+    private boolean watch;
     /** the bridge owns the CarPlay channel's session; its comp-5 session is ready; it was ready before (a later ready is a re-attach) */
     private boolean owned, ready, everReady;
     private Object askTimer, checkTimer;
@@ -65,6 +65,11 @@ final class RgWatch {
     RgWatch(Host host, boolean watch) {
         this.host = host;
         this.watch = watch;
+    }
+
+    /** the turn-by-turn mod's route guidance listener is here (it can start after this mod) */
+    synchronized void watch(boolean on) {
+        watch = on;
     }
 
     /**

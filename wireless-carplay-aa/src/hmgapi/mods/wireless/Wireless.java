@@ -15,7 +15,9 @@ import hmgapi.hook.ModEntry;
 import hmgapi.hook.Points;
 
 /**
- * The Wireless mod's hooks (the rest of the mod is file changes in patches.json).
+ * The Wireless mod's hooks (the rest of the mod is file changes in patches.json). Turn-by-turn
+ * on the cluster and HUD moved to its own mod, projection-tbt (Open-HMG hmgapi-projection-tbt),
+ * which works for wired phones too; the two work together in DiPO (dipo/Dipo's header).
  *
  * Phone Projection menu (setting "menu"): with the wireless CarPlay/AA features
  * on, HKMC_BtSettings opens the wireless projection page for Settings > Phone
@@ -44,23 +46,6 @@ import hmgapi.hook.Points;
  */
 public final class Wireless extends ModEntry {
     private final IdentityRegistry identity = new IdentityRegistry();
-    private final java.io.File aaLibrary;
-    private Boolean aaTbtSupported;
-
-    public Wireless() {
-        this(new java.io.File("/system/lib/libautoreceiver_infobank.so"));
-    }
-
-    /** Allows off-car tests to exercise the same capability check with private stock or fixtures. */
-    Wireless(java.io.File aaLibrary) {
-        this.aaLibrary = aaLibrary;
-    }
-
-    private boolean aaTbtSupported() {
-        if (aaTbtSupported == null) aaTbtSupported = AaTbtSupport.supports(aaLibrary);
-        return aaTbtSupported;
-    }
-
     static final String BTSETTINGS = "com.android.btsettings";
     static final String SYSTEM_POPUP = "com.mobis.system";
     /** what the popup's Settings button opens with the wireless features on: not on US/Canadian builds */
@@ -75,7 +60,6 @@ public final class Wireless extends ModEntry {
     static final int USB_CLASS_MASS_STORAGE = 8, USB_CLASS_HUB = 9;
     static final String HELPER = "btsettings.projection_helper";
 
-    static final String NAVIGATION = "com.mnsoft.navi";
     static final String DIPO = "com.daudio.app.dipo";
     static final String IAP2 = "com.tcc.iap2server";
     /** from DiPO's CarPlay Bluetooth bridge: start / stop an iAP2 session over Bluetooth */
@@ -84,10 +68,6 @@ public final class Wireless extends ModEntry {
     static final String USB_DIGITAL_AUDIO = "android.hardware.usb.action.DIGITAL_AUDIO_DEVICE_ATTACHED";
     /** the iAP2 component of the Bluetooth session we asked for (0: none) */
     static volatile int btComponent;
-    /** NavigationCluster's turn-by-turn calls: the car navigation's own guidance, off while a phone guides */
-    static final String[] NAVI_TBT = { "update_tbt_info", "update_tbt_sub_info", "update_tbt_sub_info_b", "update_tbt_sub_info2",
-        "update_tbt_sub_info2_b", "update_tbt_sub_info_2c", "update_remain_dis", "update_tp_crossroad_name",
-        "update_tp_destination_name", "update_tp_turn_list", "update_tp_turn_list_new", "update_tp_lane_info", "update_lane_info" };
 
     @Override
     public void zygoteInit(final ModContext mod) {
@@ -99,17 +79,15 @@ public final class Wireless extends ModEntry {
 
     @Override
     public void appLoaded(final ModContext mod, LoadedApp app) {
-        if (NAVIGATION.equals(app.packageName)) navigation(mod, app);
         if (IAP2.equals(app.packageName)) iap2(mod, app);
         if (GPM.equals(app.packageName) && mod.settingBoolean("usb_drives", true)) usbDrives(mod, app);
-        if (GPM.equals(app.packageName) && mod.settingBoolean("tbt", true)) gpmTurnByTurn(mod, app);
         if (BTSETTINGS.equals(app.packageName) && mod.settingBoolean("menu", true)) phoneProjectionMenu(mod, app);
         if (SYSTEM_POPUP.equals(app.packageName) && mod.settingBoolean("menu", true)) popupSettings(mod, app);
-        if (DIPO.equals(app.packageName) && (mod.settingBoolean("tbt", true) || mod.settingBoolean("bridge", true) || mod.settingBoolean("audio", true))) dipo(mod, app);
+        if (DIPO.equals(app.packageName) && (mod.settingBoolean("bridge", true) || mod.settingBoolean("audio", true))) dipo(mod, app);
     }
 
     /**
-     * DiPO (CarPlay): turn-by-turn, the Bluetooth bridge and Wi-Fi audio, in the mod's DiPO part
+     * DiPO (CarPlay): the Bluetooth bridge and Wi-Fi audio, in the mod's DiPO part
      * (hmgapi.mods.wireless.dipo.Dipo), which links against DiPO's iAP2 and Bluetooth
      * libraries.
      */
@@ -122,34 +100,8 @@ public final class Wireless extends ModEntry {
     }
 
     /**
-     * In the car navigation app, while a phone guides (Android Auto or CarPlay): its own
-     * turn-by-turn calls to the cluster and HUD are skipped, so they don't fight the
-     * phone's. Its speed limit, cameras, traps, warning distances and driver-assist data
-     * still go through (phones carry none of that). Its lanes (updateLaneInfo) don't: with
-     * no route it sends the lanes of every intersection it passes, none marked, in the
-     * same 0xF1 frame as the phone's lanes for the next turn, which it overwrote (US
-     * Ioniq 5, 2026-11-03). Framework calls only: no app names.
-     */
-    private void navigation(final ModContext mod, final LoadedApp app) {
-        if (!mod.settingBoolean("tbt", true)) return;
-        // Keep stock navigation available when this mod cannot supply AA turns. CarPlay
-        // and cars with GPM's own turn-by-turn retain their existing arbitration.
-        final boolean aaGuidance = Car.stepOfSpec() >= 999 || aaTbtSupported();
-        MethodHook skip = new MethodHook() {
-            @Override
-            protected void beforeHookedMethod(Param p) {
-                if (Car.carPlayGuiding(app.context) || (aaGuidance && Car.androidAutoGuiding(app.context))) p.setResult(null);
-            }
-        };
-        for (String m : NAVI_TBT) mod.hook(null, "framework.navigation_cluster." + m, skip);
-        mod.log("navigation: turn-by-turn yields to " + (aaGuidance ? "Android Auto and CarPlay" : "CarPlay")
-                + " in " + app.processName);
-    }
-
-    /**
-     * The iAP2 server. Turn-by-turn ("tbt"): it offers RouteGuidance to the iPhone only
-     * when the car's stepofspec is 999 or more (US/Canada: 105), so HMG-API sets that one
-     * flag after it decides. Bluetooth bridge ("bridge"): DiPO's bridge asks for an iAP2
+     * The iAP2 server. Shared CarPlay identity ("shared_identity"): other mods' vehicle
+     * identity goes into its identification. Bluetooth bridge ("bridge"): DiPO's bridge asks for an iAP2
      * session over Bluetooth (BT_ATTACHED / BT_DETACHED, from apps holding
      * BLUETOOTH_PRIVILEGED); a USB CarPlay attach ends it first, before the server's own
      * receiver handles that attach.
@@ -158,18 +110,6 @@ public final class Wireless extends ModEntry {
         final ClassLoader cl = app.classLoader;
         if (mod.settingBoolean("shared_identity", true)) IdentityInstaller.install(mod, app, identity);
         else mod.log("CarPlay identity sharing is off; contributions are not applied");
-        if (mod.settingBoolean("tbt", true)) {
-            mod.hook(cl, "iap2.init_info.check_supports_features", new MethodHook() {
-                @Override
-                protected void afterHookedMethod(Param p) {
-                    try {
-                        Points.field(cl, "iap2.init_info.route_guidance").setInt(null, 1);
-                    } catch (Exception e) {
-                        mod.error("route guidance flag", e);
-                    }
-                }
-            });
-        }
         if (!mod.settingBoolean("bridge", true)) return;
         mod.hook(cl, "iap2.service.on_create", new MethodHook() {
             @Override
@@ -230,122 +170,6 @@ public final class Wireless extends ModEntry {
         Points.call(cl, "iap2.service.set_device_serial", svc, (Object) null);
         Points.call(cl, "iap2.service.receive_disconnect", svc, c);
         mod.log("bridge: Bluetooth iAP2 session stopped, component " + c + " (" + why + ")");
-    }
-
-    /**
-     * Android Auto turn-by-turn (GPM). GPM's own turn-by-turn manager only exists when
-     * the car's stepofspec is 999 or more (US/Canada: 105), and it claims the cluster in a
-     * way these cars don't give back. HMG-API leaves GPM's manager off and runs its own
-     * (AaTurns) from the AA library's callbacks, sending through HMG-API's Cluster API.
-     * GPM tells the phone its cluster takes pictures (IMAGE); HMG-API says ENUM, so the
-     * phone sends turn data the cluster can show. One AaTurns per connection (GalReceiver),
-     * all on one thread.
-     */
-    private void gpmTurnByTurn(final ModContext mod, final LoadedApp app) {
-        final ClassLoader cl = app.classLoader;
-        if (Car.stepOfSpec() >= 999) {
-            mod.log("Android Auto: stepofspec is 999 or more, GPM's own turn-by-turn runs (HMG-API's stays off)");
-            return;
-        }
-        // nativePatch is asynchronous and returns no success result. Do not install
-        // its dependent Java hooks on an unknown library,
-        // even if an owner saved tbt=true. CarPlay and the USB-drive hook are separate.
-        if (!aaTbtSupported()) {
-            mod.log("Android Auto: cluster/HUD turn-by-turn off; stock library has no verified recipe or could not be read");
-            return;
-        }
-        // the AA library: protocol 1.6 and the turn-by-turn extras packed into its callbacks, in memory (file stays stock)
-        mod.nativePatch(app, "libautoreceiver_infobank.so");
-        mod.hook(cl, "gpm.navigation_status.init", new MethodHook() {
-            @Override
-            protected void beforeHookedMethod(Param p) {
-                if (p.args[3] == Points.get(cl, "gpm.cluster_type.image", null)) p.args[3] = Points.get(cl, "gpm.cluster_type.enum", null);
-            }
-        });
-        final java.util.Map<Object, AaTurns> turns = new java.util.WeakHashMap<Object, AaTurns>();
-        final android.os.HandlerThread thread = new android.os.HandlerThread("hmgapi-aa-tbt");
-        thread.start();
-        final android.os.Handler handler = new android.os.Handler(thread.getLooper());
-        abstract class OnTurns extends MethodHook {
-            abstract void run(AaTurns t, Object[] a);
-
-            /** receiver: the GalReceiver; create: make its AaTurns if there's none yet */
-            void post(final Object receiver, final boolean create, final Object[] args) {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            AaTurns t;
-                            synchronized (turns) {
-                                t = turns.get(receiver);
-                                if (t == null && create) {
-                                    hmgapi.hook.Cluster c = hmgapi.hook.Cluster.of(app.context);
-                                    if (c == null) return;
-                                    turns.put(receiver, t = new AaTurns(app.context, c, handler));
-                                    t.standardTurns = mod.settingBoolean("tbt_standard", false);
-                                    mod.log("Android Auto: navigation callback received; cluster bridge created"
-                                            + (t.standardTurns ? " (standard turns)" : ""));
-                                }
-                            }
-                            if (t != null) OnTurns.this.run(t, args);
-                        } catch (Throwable x) {
-                            mod.error("Android Auto turn-by-turn", x);
-                        }
-                    }
-                });
-            }
-
-            @Override
-            protected void afterHookedMethod(Param p) {
-                post(Points.get(cl, "gpm.navigation_status.receiver", p.thisObject), true, p.args.clone());
-            }
-        }
-        mod.hook(cl, "gpm.navigation_status.next_turn", new OnTurns() {
-            @Override
-            void run(AaTurns t, Object[] a) {
-                t.nextTurn((String) a[0], (Integer) a[1], (Integer) a[2], (Integer) a[4], (Integer) a[5]);
-            }
-        });
-        mod.hook(cl, "gpm.navigation_status.next_turn_distance", new OnTurns() {
-            @Override
-            void run(AaTurns t, Object[] a) {
-                t.nextTurnDistance((Integer) a[0], (Integer) a[1], (Integer) a[2], (Integer) a[3]);
-            }
-        });
-        mod.hook(cl, "gpm.navigation_status.status", new OnTurns() {
-            @Override
-            void run(AaTurns t, Object[] a) {
-                t.status((Integer) a[0]);
-            }
-        });
-        mod.hook(cl, "gpm.receiver.send_navigation_focus", new OnTurns() {
-            @Override
-            void run(AaTurns t, Object[] a) {
-                if (a[0].equals(Points.get(cl, "gpm.receiver.focus_native", null))) t.stop();
-            }
-
-            @Override
-            protected void afterHookedMethod(Param p) {
-                post(p.thisObject, false, p.args.clone());
-            }
-        });
-        mod.hook(cl, "gpm.receiver.destroy", new OnTurns() {
-            @Override
-            void run(AaTurns t, Object[] a) {
-                t.end();
-                synchronized (turns) {
-                    turns.values().remove(t);
-                }
-            }
-
-            @Override
-            protected void beforeHookedMethod(Param p) {
-                post(p.thisObject, false, new Object[0]);
-            }
-
-            @Override
-            protected void afterHookedMethod(Param p) {}
-        });
     }
 
     private void usbDrives(final ModContext mod, LoadedApp app) {

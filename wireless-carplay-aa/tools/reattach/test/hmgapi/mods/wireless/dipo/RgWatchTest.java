@@ -387,6 +387,12 @@ public final class RgWatchTest {
         c.advance(120000);
         eq("tbt off: asked, never re-asked", "1/0", h.asks.size() + "/" + h.restarts.size());
         check("tbt off: not watching", !w.watching());
+        // the turn-by-turn mod can start after this one: its first word turns the watch on
+        w.watch(true);
+        w.started();
+        check("the turn-by-turn mod showed up later: its Start is watched", w.watching());
+        w.update();
+        check("...and its update ends the watch", !w.watching());
         // a re-attach planned (not yet asked) with a stray identification: not taken as comp 5's ready
         Clock c2 = new Clock();
         RgHost h2 = new RgHost(c2);
