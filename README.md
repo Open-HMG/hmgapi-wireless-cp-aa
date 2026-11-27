@@ -6,10 +6,11 @@ car's own Wi-Fi hotspot.
 > **Turn-by-turn moved (from 3.0).** Your phone's directions on the instrument cluster
 > and HUD are now their own mod,
 > [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmg-api-turn-by-turn), which works
-> for wired phones too. Install it next to this one to keep them. Versions 2.x of this
-> mod still include turn-by-turn. **3.0 is set up but not released**, and hasn't been on
-> a car yet. Updating from 2.x: [update this mod first](#updating-from-2x-turn-by-turn-is-its-own-mod),
-> then install Phone Turn-by-Turn.
+> for wired phones too. Install it next to this one to keep them, after updating this mod
+> to 3.0 (next to 2.x, which still has the same hooks, it would turn this mod off). It takes
+> over the turn-by-turn settings you had here. Versions 2.x of this mod still include
+> turn-by-turn. **3.0 is set up but not released**, and hasn't been on
+> a car yet. More in [Updating from 2.x](#updating-from-2x-turn-by-turn-is-its-own-mod).
 
 [Download the mod](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases) ·
 [Confirmed cars](#confirmed-cars) ·
@@ -37,8 +38,8 @@ For the full list of model codes and firmware the installer accepts, see
 
 ## Install and connect
 
-1. Install or update HMG-API. Mod version **2.2.0-rc.8** requires **HMG-API
-   1.1.0-rc.6 or newer**. [HMG-API installation guide](https://github.com/Open-HMG/HMG-API/wiki/Installing-HMG-API)
+1. Install or update HMG-API. Mod version **3.0** requires **HMG-API
+   1.1.0-rc.8 or newer**. [HMG-API installation guide](https://github.com/Open-HMG/HMG-API/wiki/Installing-HMG-API)
 2. Download `wireless-carplay-aa-<version>.zip` and copy it, still zipped, into
    `HMGAPI/updates/` on a USB stick. [Mod releases](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases)
 3. Plug in the stick. In HMG-API, select **Check USB updates**, then **Wireless
@@ -71,8 +72,9 @@ are [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmg-api-turn-by-turn)
 2. **Then install Phone Turn-by-Turn** (its first release, 1.0.0-beta.1, comes out with
    3.0.0-beta.1). Installed next to 2.x, it turns this mod's hooks off (2.x has the same
    turn-by-turn hooks, and HMG-API loads only one), so wireless stops until this mod is 3.0.
-3. Set the turn-by-turn settings again in the HMG-API app, under **Phone Turn-by-Turn**:
-   they were this mod's and don't come across.
+3. Your turn-by-turn settings come with you: Phone Turn-by-Turn takes over the ones you
+   had in this mod the first time it starts (they're under **Phone Turn-by-Turn** in the
+   HMG-API app from then on).
 
 Don't want turn-by-turn? Update to 3.0 and stop there. Going back: remove Phone
 Turn-by-Turn first, then install 2.2, which has turn-by-turn built in.

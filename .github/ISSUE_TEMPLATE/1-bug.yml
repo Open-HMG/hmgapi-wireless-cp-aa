@@ -58,7 +58,6 @@ body:
         - Picture (black, frozen, wrong size)
         - Sound
         - Bluetooth (calls, the phone disconnects)
-        - Turn-by-turn on the cluster or HUD
         - Something else
     validations:
       required: true

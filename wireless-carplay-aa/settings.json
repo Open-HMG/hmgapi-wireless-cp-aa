@@ -6,7 +6,8 @@
       "type": "toggle",
       "default": true,
       "title": "Wireless CarPlay (Bluetooth bridge and Wi-Fi sessions)",
-      "apply": "rebuild"
+      "apply": "rebuild",
+      "warning": "Turn-by-turn on the cluster and HUD moved out of this mod in 3.0: it is now the Phone Turn-by-Turn mod (projection-tbt), for wired and wireless phones. Install it next to this one to keep your phone's directions on the cluster; it takes over the turn-by-turn settings you had here the first time it starts."
     },
     {
       "key": "shared_identity",

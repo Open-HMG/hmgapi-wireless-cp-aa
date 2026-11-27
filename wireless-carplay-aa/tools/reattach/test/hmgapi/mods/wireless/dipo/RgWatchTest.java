@@ -76,6 +76,8 @@ public final class RgWatchTest {
     static final class RgHost implements RgWatch.Host {
         final Clock c;
         final List<Long> asks = new ArrayList<Long>(), restarts = new ArrayList<Long>();
+        /** the turn-by-turn mod's property (Dipo.TBT_UP), read live */
+        boolean tbt = true;
 
         RgHost(Clock c) {
             this.c = c;
@@ -109,6 +111,11 @@ public final class RgWatchTest {
         @Override
         public void log(String m) {
             c.logs.add(m);
+        }
+
+        @Override
+        public boolean tbtUp() {
+            return tbt;
         }
     }
 
@@ -164,6 +171,7 @@ public final class RgWatchTest {
         linkDown();
         reattach();
         misc();
+        tbtLoadsLater();
         System.out.println(oks + " ok, " + (fail == 0 ? "0 failed" : "FAILED"));
         System.exit(fail);
     }
@@ -172,7 +180,7 @@ public final class RgWatchTest {
     static void firstHandover() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         Reattach r = new Reattach(new ReHost(c));
         w.ready(true);
         RgWatch.ready(r, w, OK, true);
@@ -200,7 +208,7 @@ public final class RgWatchTest {
     static void watchdog() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         w.sessionUp();
         RgWatch.ready(null, w, OK, true);   // re-attach off (no Reattach): RgWatch asks by itself
         c.advance(1000);
@@ -226,7 +234,7 @@ public final class RgWatchTest {
     static void stopOnUpdate() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         w.sessionUp();
         RgWatch.ready(null, w, OK, true);
         c.advance(1000);
@@ -264,7 +272,7 @@ public final class RgWatchTest {
     static void sessionEnd() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         w.sessionUp();
         RgWatch.ready(null, w, OK, true);
         c.advance(500);
@@ -291,7 +299,7 @@ public final class RgWatchTest {
     static void linkDown() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         w.sessionUp();
         RgWatch.ready(null, w, OK, true);
         c.advance(600);
@@ -322,7 +330,7 @@ public final class RgWatchTest {
     static void reattach() {
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, true);
+        RgWatch w = new RgWatch(h);
         ReHost rh = new ReHost(c);
         rh.w = w;
         Reattach r = new Reattach(rh);
@@ -381,14 +389,15 @@ public final class RgWatchTest {
         // turn-by-turn off: the ask still asks (Now Playing) but nothing is watched
         Clock c = new Clock();
         RgHost h = new RgHost(c);
-        RgWatch w = new RgWatch(h, false);
+        h.tbt = false;
+        RgWatch w = new RgWatch(h);
         w.sessionUp();
         RgWatch.ready(null, w, OK, true);
         c.advance(120000);
         eq("tbt off: asked, never re-asked", "1/0", h.asks.size() + "/" + h.restarts.size());
         check("tbt off: not watching", !w.watching());
         // the turn-by-turn mod can start after this one: its first word turns the watch on
-        w.watch(true);
+        w.heard();
         w.started();
         check("the turn-by-turn mod showed up later: its Start is watched", w.watching());
         w.update();
@@ -396,7 +405,7 @@ public final class RgWatchTest {
         // a re-attach planned (not yet asked) with a stray identification: not taken as comp 5's ready
         Clock c2 = new Clock();
         RgHost h2 = new RgHost(c2);
-        RgWatch w2 = new RgWatch(h2, true);
+        RgWatch w2 = new RgWatch(h2);
         ReHost rh2 = new ReHost(c2);
         rh2.w = w2;
         Reattach r2 = new Reattach(rh2);
@@ -409,5 +418,35 @@ public final class RgWatchTest {
         RgWatch.ready(r2, w2, ID, false);   // noti 0 while the link is down and the re-attach only planned
         c2.advance(1500);
         eq("planned re-attach + noti 0 without comp 5 up: no ask", 1, h2.asks.size());
+    }
+
+    /**
+     * HookPlan's order with egmp-carplay-ev-routing (wireless, egmp, projection-tbt): this
+     * mod's DiPO part, and RgWatch, start before the turn-by-turn mod sets its property, and
+     * no route guidance flows so it never broadcasts. The first handover's ask still arms the
+     * watchdog, which re-asks at 3, 10, 25 and 55 s.
+     */
+    static void tbtLoadsLater() {
+        Clock c = new Clock();
+        RgHost h = new RgHost(c);
+        h.tbt = false;   // not set yet when RgWatch is made
+        RgWatch w = new RgWatch(h);
+        h.tbt = true;    // the turn-by-turn mod loads in DiPO: property only, no broadcast
+        w.sessionUp();
+        RgWatch.ready(null, w, OK, true);
+        c.advance(1000);
+        eq("tbt loaded later: asked at 1 s", "[1000]", h.asks.toString());
+        check("tbt loaded later, no broadcast: the watchdog is armed", w.watching());
+        c.advance(120000);
+        eq("tbt loaded later: re-asks at +3, +10, +25, +55 s", "[4000, 11000, 26000, 56000]", h.restarts.toString());
+        // and the other way: the property gone (the mod's listener off) is read live too
+        Clock c2 = new Clock();
+        RgHost h2 = new RgHost(c2);
+        RgWatch w2 = new RgWatch(h2);
+        h2.tbt = false;
+        w2.sessionUp();
+        RgWatch.ready(null, w2, OK, true);
+        c2.advance(120000);
+        eq("tbt gone before the ask: asked, never re-asked", "1/0", h2.asks.size() + "/" + h2.restarts.size());
     }
 }
