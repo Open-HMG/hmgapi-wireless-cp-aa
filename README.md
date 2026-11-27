@@ -6,8 +6,10 @@ car's own Wi-Fi hotspot.
 > **Turn-by-turn moved (from 3.0).** Your phone's directions on the instrument cluster
 > and HUD are now their own mod,
 > [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmg-api-turn-by-turn), which works
-> for wired phones too. Install it next to this one to keep them. Versions 2.x of this
-> mod still include turn-by-turn. **3.0 is set up but not released**, and hasn't been on
+> for wired phones too. Install it next to this one to keep them, after updating this mod
+> to 3.0 (next to 2.x, which still has the same hooks, it would turn this mod off). It takes
+> over the turn-by-turn settings you had here. Versions 2.x of this mod still include
+> turn-by-turn. **3.0 is set up but not released**, and hasn't been on
 > a car yet.
 
 [Download the mod](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases) ·
@@ -36,8 +38,8 @@ For the full list of model codes and firmware the installer accepts, see
 
 ## Install and connect
 
-1. Install or update HMG-API. Mod version **2.2.0-rc.8** requires **HMG-API
-   1.1.0-rc.6 or newer**. [HMG-API installation guide](https://github.com/Open-HMG/HMG-API/wiki/Installing-HMG-API)
+1. Install or update HMG-API. Mod version **3.0** requires **HMG-API
+   1.1.0-rc.8 or newer**. [HMG-API installation guide](https://github.com/Open-HMG/HMG-API/wiki/Installing-HMG-API)
 2. Download `wireless-carplay-aa-<version>.zip` and copy it, still zipped, into
    `HMGAPI/updates/` on a USB stick. [Mod releases](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases)
 3. Plug in the stick. In HMG-API, select **Check USB updates**, then **Wireless

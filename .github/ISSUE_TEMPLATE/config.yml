@@ -3,6 +3,9 @@ contact_links:
   - name: HMG-API itself (installing, the app, other mods, Car Reports, hook maps)
     url: https://github.com/Open-HMG/HMG-API/issues/new/choose
     about: Problems that aren't this mod's go to HMG-API.
+  - name: Turn-by-turn on the cluster or HUD (the Phone Turn-by-Turn mod)
+    url: https://github.com/AwsomeFox/hmg-api-turn-by-turn/issues/new/choose
+    about: From 3.0 turn-by-turn is its own mod; its problems go to its repository.
   - name: Install guide and help
     url: https://github.com/Open-HMG/HMG-API/wiki
     about: Installing, removing, and fixing common problems.

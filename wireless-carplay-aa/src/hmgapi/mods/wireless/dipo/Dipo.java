@@ -46,7 +46,8 @@ import hmgapi.hook.Points;
  *    is up (Bridge), so the turn-by-turn mod doesn't take the handover's iAP2 disconnects
  *    (components 4 and 5) for the phone leaving.
  *  - TBT_UP: the turn-by-turn mod's, "1" while its route guidance listener runs. Without
- *    it there is no route guidance to ask for or watch (Now Playing is still asked).
+ *    it there is no route guidance to ask for or watch (Now Playing is still asked). Read
+ *    at each ask, not at start: that mod can start in DiPO after this one.
  *  - RG_EVENT: its broadcast inside DiPO: "started" (it restarted route guidance),
  *    "stopped" (DiPO stopped it) and "update" (it is flowing), for RgWatch.
  *  - Route guidance restarts run on threads named OWN_THREADS…, so the turn-by-turn mod
@@ -362,15 +363,20 @@ public final class Dipo {
             public void log(String m) {
                 Dipo.log("CarPlay: " + m);
             }
-        }, tbtUp());
-        // the turn-by-turn mod's word on route guidance (it may start after this mod: any word turns the watch on)
+
+            @Override
+            public boolean tbtUp() {
+                return Dipo.tbtUp();   // read at every Start: the turn-by-turn mod can load after this one
+            }
+        });
+        // the turn-by-turn mod's word on route guidance (any word turns the watch on, property or not)
         app.context.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
                 RgWatch w = rgWatch;
                 String e = i.getStringExtra("event");
                 if (w == null || e == null) return;
-                w.watch(true);
+                w.heard();
                 if ("update".equals(e)) w.update();
                 else if ("started".equals(e)) w.started();
                 else if ("stopped".equals(e)) w.stopped();
