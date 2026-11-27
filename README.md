@@ -8,7 +8,8 @@ car's own Wi-Fi hotspot.
 > [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmg-api-turn-by-turn), which works
 > for wired phones too. Install it next to this one to keep them. Versions 2.x of this
 > mod still include turn-by-turn. **3.0 is set up but not released**, and hasn't been on
-> a car yet.
+> a car yet. Updating from 2.x: [update this mod first](#updating-from-2x-turn-by-turn-is-its-own-mod),
+> then install Phone Turn-by-Turn.
 
 [Download the mod](https://github.com/Open-HMG/hmgapi-wireless-cp-aa/releases) ·
 [Confirmed cars](#confirmed-cars) ·
@@ -59,6 +60,25 @@ Updates require the same author key as the installed copy. If you installed a
 test build signed with a different key, remove it and apply the removal before
 installing the release. To uninstall an app-installed copy, choose **Remove**
 in HMG-API and tap **Apply changes** to restore the files the mod changed.
+
+## Updating from 2.x: turn-by-turn is its own mod
+
+From 3.0, this mod only does the wireless connection. Directions on the cluster and HUD
+are [Phone Turn-by-Turn](https://github.com/AwsomeFox/hmg-api-turn-by-turn)
+(`projection-tbt`). To keep them:
+
+1. **Update this mod to 3.0 first.**
+2. **Then install Phone Turn-by-Turn** (its first release, 1.0.0-beta.1, comes out with
+   3.0.0-beta.1). Installed next to 2.x, it turns this mod's hooks off (2.x has the same
+   turn-by-turn hooks, and HMG-API loads only one), so wireless stops until this mod is 3.0.
+3. Set the turn-by-turn settings again in the HMG-API app, under **Phone Turn-by-Turn**:
+   they were this mod's and don't come across.
+
+Don't want turn-by-turn? Update to 3.0 and stop there. Going back: remove Phone
+Turn-by-Turn first, then install 2.2, which has turn-by-turn built in.
+
+Using the EV models mod (`egmp-aa-ev`)? It isn't ready for 3.0 yet: stay on 2.x until an
+`egmp-aa-ev` release says it works with Wireless 3.0.
 
 ## Features and settings
 
