@@ -37,8 +37,8 @@ check "plan has no problems" 0 $rc
 eng apply
 check "apply (every part)" 0 $rc
 [ $rc = 0 ] || echo "$out"
-check "turn-by-turn GPM is hooks now: GPM untouched" "" "$(echo "$out" | grep HKMC_GPM)"
-check "AA and CarPlay libraries are patched in memory now: files untouched" "" "$(echo "$out" | grep 'libautoreceiver\|libCarPlay')"
+check "GPM untouched" "" "$(echo "$out" | grep HKMC_GPM)"
+check "CarPlay libraries are patched in memory: files untouched (and nothing for Android Auto's)" "" "$(echo "$out" | grep 'libautoreceiver\|libCarPlay')"
 has "audio converter added" "/system/lib/libleafiaaac.so" "$out"
 has "CarPlay identity serializer added" "/system/lib/libcarplayidentity.so" "$out"
 has "CarPlay log switch added" "/system/lib/libcarplaylog.so" "$out"
@@ -59,7 +59,7 @@ fi
 # no stock file, so HMG-API's own goes in (on a car with the stock file, only its line changes)
 has "hotspot feature: HMG-API's file" '<feature name="com.hkmc.software.wifihotspot" />' "$(cat $R/system/etc/permissions/com.hkmc.software.wifihotspot.xml 2>/dev/null)"
 check "featurexml: hotspot line not live" "" "$(grep -x -- '-/system/etc/permissions/com.hkmc.software.wifihotspot.xml' $R/system/onebin/$ONEBIN/featurexml.cfg || true)"
-check "turn-by-turn and bridge are hooks now: DiPO untouched" "" "$(echo "$out" | grep HKMC_DiPO)"
+check "the bridge is hooks: DiPO untouched" "" "$(echo "$out" | grep HKMC_DiPO)"
 
 printf '{"bridge": false}\n' > $R/data/hmgapi/settings/wireless-carplay-aa.json
 eng apply

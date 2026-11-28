@@ -38,7 +38,7 @@ body:
     id: what
     attributes:
       label: What works
-      description: CarPlay, Android Auto, sound, Bluetooth, turn-by-turn on the cluster or HUD.
+      description: CarPlay, Android Auto, sound, Bluetooth, Now Playing. (Turn-by-turn on the cluster or HUD is the Phone Turn-by-Turn mod's from 3.0.)
   - type: textarea
     id: report
     attributes:

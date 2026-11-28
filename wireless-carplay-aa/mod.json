@@ -1,18 +1,19 @@
 {
   "id": "wireless-carplay-aa",
   "name": "Wireless CarPlay + Android Auto",
-  "version": "2.2.0-rc.9",
+  "version": "3.0.0-beta.1",
   "hmgapi": ">=1.1.0-rc.8",
   "authors": [
     "VysseCodes"
   ],
   "license": "AGPL-3.0",
+  "repo": "https://github.com/Open-HMG/hmgapi-wireless-cp-aa",
   "nemesis_conflicts": [
     "wireless.projection",
     "projection.tbt",
     "enhanced.projection"
   ],
-  "description": "Wireless CarPlay and Android Auto on the head unit's hotspot, with turn-by-turn on the cluster and HUD.",
+  "description": "Wireless CarPlay and Android Auto on the head unit's hotspot. Turn-by-turn on the cluster and HUD is the Phone Turn-by-Turn mod (projection-tbt).",
   "api": {
     "packages": [
       "hmgapi.mods.wireless.api"
@@ -383,10 +384,6 @@
       "id": "projection"
     },
     {
-      "id": "tbt",
-      "when": "settings.tbt"
-    },
-    {
       "id": "bridge",
       "when": "settings.bridge"
     },
@@ -419,31 +416,11 @@
     "points": {
       "framework.context_impl.start_service": "replace",
       "btsettings.projection_helper.open_wireless_page": "replace",
-      "framework.navigation_cluster.update_tbt_info": "replace",
-      "framework.navigation_cluster.update_tbt_sub_info": "replace",
-      "framework.navigation_cluster.update_tbt_sub_info_b": "replace",
-      "framework.navigation_cluster.update_tbt_sub_info2": "replace",
-      "framework.navigation_cluster.update_tbt_sub_info2_b": "replace",
-      "framework.navigation_cluster.update_tbt_sub_info_2c": "replace",
-      "framework.navigation_cluster.update_remain_dis": "replace",
-      "framework.navigation_cluster.update_tp_crossroad_name": "replace",
-      "framework.navigation_cluster.update_tp_destination_name": "replace",
-      "framework.navigation_cluster.update_tp_turn_list": "replace",
-      "framework.navigation_cluster.update_tp_turn_list_new": "replace",
-      "framework.navigation_cluster.update_tp_lane_info": "replace",
-      "framework.navigation_cluster.update_lane_info": "replace",
       "iap2.init_info.check_supports_features": "change",
       "iap2.init_info.use_vehicle_information": "change",
       "iap2.init_info.use_vehicle_status": "change",
       "iap2.service.on_create": "observe",
       "iap2.service_receiver.on_receive": "observe",
-      "gpm.navigation_status.init": "change",
-      "gpm.navigation_status.next_turn": "observe",
-      "gpm.navigation_status.next_turn_distance": "observe",
-      "gpm.navigation_status.status": "observe",
-      "gpm.receiver.send_navigation_focus": "observe",
-      "gpm.receiver.destroy": "observe",
-      "dipo.iap2_proxy.stop_route_guidance": "observe",
       "dipo.btcm.register_listener": "observe",
       "dipo.carplay.session_created": "observe",
       "dipo.carplay.session_started": "observe",
@@ -460,11 +437,6 @@
       "framework.activity.start_activity_for_result": "change"
     },
     "native": {
-      "libautoreceiver_infobank.so": [
-        "recipes/aa-tbt-48ee793a.recipe",
-        "recipes/aa-tbt-a0bea1c4.recipe",
-        "recipes/aa-tbt-dbfe7bd2.recipe"
-      ],
       "libCarPlayCore.so": [
         "recipes/carplay-core-frames-ef49c09b.recipe",
         "recipes/carplay-core-wifi.recipe"

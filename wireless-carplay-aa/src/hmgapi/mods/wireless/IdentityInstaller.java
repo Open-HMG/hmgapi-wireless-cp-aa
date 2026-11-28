@@ -37,7 +37,7 @@ final class IdentityInstaller {
         }
         catch (Throwable t) {
             // Identification is an optional extension of the iAP2 server. A native ABI
-            // mismatch must not prevent Wireless from installing its bridge and TBT hooks.
+            // mismatch must not prevent Wireless from installing its bridge hooks.
             failure(mod, "CarPlay identification unavailable; Wireless continues without it", t);
         }
         MethodHook groups = new MethodHook() {

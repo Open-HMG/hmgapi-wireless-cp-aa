@@ -44,6 +44,14 @@ final class RgWatch {
         void restart();
 
         void log(String m);
+
+        /**
+         * the turn-by-turn mod's route guidance listener runs here (Dipo.TBT_UP), read at every
+         * Start: that mod can load after this one in DiPO (requires first, then by id: with
+         * egmp-carplay-ev-routing, which requires this mod, it does), so it isn't known yet
+         * when this is made
+         */
+        boolean tbtUp();
     }
 
     /** the ask after comp 5 is ready */
@@ -52,8 +60,8 @@ final class RgWatch {
     static final long[] CHECK_MS = { 3000, 7000, 15000, 30000 };
 
     private final Host host;
-    /** with turn-by-turn off there's no route guidance to watch (asks still ask Now Playing) */
-    private final boolean watch;
+    /** the turn-by-turn mod spoke (RG_EVENT): watch even if its property isn't seen */
+    private boolean heard;
     /** the bridge owns the CarPlay channel's session; its comp-5 session is ready; it was ready before (a later ready is a re-attach) */
     private boolean owned, ready, everReady;
     private Object askTimer, checkTimer;
@@ -62,9 +70,13 @@ final class RgWatch {
     private long startedAt;
     private int step, reasks;
 
-    RgWatch(Host host, boolean watch) {
+    RgWatch(Host host) {
         this.host = host;
-        this.watch = watch;
+    }
+
+    /** the turn-by-turn mod's broadcast was heard: its route guidance listener is here */
+    synchronized void heard() {
+        heard = true;
     }
 
     /**
@@ -169,7 +181,8 @@ final class RgWatch {
     }
 
     private void arm() {
-        if (!watch) return;
+        // without the turn-by-turn mod there's no route guidance to watch (asks still ask Now Playing)
+        if (!heard && !host.tbtUp()) return;
         stopWatch();
         watching = true;
         startedAt = host.now();
