@@ -7,6 +7,7 @@
     "VysseCodes"
   ],
   "license": "AGPL-3.0",
+  "repo": "https://github.com/Open-HMG/hmgapi-wireless-cp-aa",
   "nemesis_conflicts": [
     "wireless.projection",
     "projection.tbt",
