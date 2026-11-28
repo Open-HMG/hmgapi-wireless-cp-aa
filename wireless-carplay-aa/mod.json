@@ -13,7 +13,7 @@
     "projection.tbt",
     "enhanced.projection"
   ],
-  "description": "Wireless CarPlay and Android Auto on the head unit's hotspot. Turn-by-turn on the cluster and HUD is the Phone Turn-by-Turn mod (projection-tbt).",
+  "description": "Wireless CarPlay and Android Auto on the head unit's hotspot. From 3.0, turn-by-turn on the cluster and HUD is its own mod, Phone Turn-by-Turn (projection-tbt): update this one first, then install that one to keep it.",
   "api": {
     "packages": [
       "hmgapi.mods.wireless.api"
